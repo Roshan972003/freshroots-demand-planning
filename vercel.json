@@ -1,6 +1,13 @@
 {
   "functions": {
-    "api/recommendations.py": { "includeFiles": "{engine.py,data/**}" },
-    "api/overrides.py": { "includeFiles": "api/_store.py" }
+    "api/recommendations.py": {
+      "includeFiles": "{engine.py,data/**,api/_zoho.py}"
+    },
+    "api/overrides.py": {
+      "includeFiles": "api/_store.py"
+    },
+    "api/zoho_po.py": {
+      "includeFiles": "{api/_zoho.py,data/**}"
+    }
   }
 }

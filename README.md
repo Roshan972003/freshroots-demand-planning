@@ -16,7 +16,15 @@ python3 engine.py       # CSV/JSON recommendations in out/
 2. In the project: Storage > Create > Neon Postgres (connects and sets `DATABASE_URL` automatically).
 3. Redeploy. Refresh data by replacing the CSVs in `data/` and pushing.
 
-## Open purchase orders (optional)
+## Zoho Inventory link (optional, off until env vars are set)
+Read-only by default: live open purchase orders count as stock. Falls back to the CSVs if Zoho is unreachable, and the dashboard says so.
+1. In the Zoho API console (api-console.zoho.in, or your data center) create a **Self Client**. Scopes: `ZohoInventory.items.READ,ZohoInventory.purchaseorders.READ` (add `ZohoInventory.purchaseorders.CREATE` only for draft POs). Generate a grant code and exchange it once for a **refresh token**.
+2. In Vercel > Settings > Environment Variables add: `ZOHO_CLIENT_ID`, `ZOHO_CLIENT_SECRET`, `ZOHO_REFRESH_TOKEN`, `ZOHO_ORG_ID` (Zoho Inventory > Settings > Organization Profile), and `ZOHO_DC` (`in` default, `com`, `eu`, `com.au`). Mark the secrets Sensitive.
+3. Optional: `ZOHO_SYNC_STOCK=true` (use Zoho stock instead of `current_inventory.csv`), `ZOHO_OPEN_PO_STATUSES` (default `open`), `ZOHO_ALLOW_DRAFT_PO=true` plus `ZOHO_DEFAULT_VENDOR_ID` (or `data/zoho_vendors.csv` with SKU_ID,Vendor_ID) to show a "Create draft PO in Zoho" button after a decision. Drafts only: a person reviews and issues them in Zoho.
+4. Zoho item SKU codes must match the SKU IDs here (SKU001...). Redeploy.
+Tests with a mocked Zoho: `python3 -m unittest tests.test_zoho -v`. Not yet run against a real Zoho account.
+
+## Open purchase orders from CSV (used when Zoho is not configured)
 `data/open_orders.csv` (PO_Number, SKU_ID, Quantity, Expected_Date), exported from Zoho. Units on order count as stock in the cover checks. Leave it header-only if there is nothing open. No Zoho API is used.
 
 Layout: `public/index.html` (UI), `api/recommendations.py` (runs `engine.py` on `data/`), `api/overrides.py` (accept/override records in Postgres).

@@ -70,17 +70,19 @@ def decide(s, vals, stock, is_fest, cfg=CONFIG, on_order=0):
                 avg12=avg12, recent4=recent4, spike=spike, rate=rate, cover=cover,
                 lo=lo, hi=hi, std=std, stock=stock, perish=perish, on_order=on_order)
 
-def run(data_dir="data", month=None, cfg=CONFIG):
+def run(data_dir="data", month=None, cfg=CONFIG, open_po=None, stock=None, today=None):
     sales = read(f"{data_dir}/weekly_sales.csv")
     skus = {r["SKU_ID"]: r for r in read(f"{data_dir}/sku_master.csv")}
     dists = {r["Distributor_ID"]: r for r in read(f"{data_dir}/distributor_master.csv")}
     inv = {r["SKU_ID"]: r for r in read(f"{data_dir}/current_inventory.csv")}
     festival = {r["Year_Month"]: r["Is_Festival_Month"].upper() == "TRUE" for r in read(f"{data_dir}/calendar.csv")}
 
-    # Optional: open purchase orders exported from Zoho (SKU_ID, Quantity). Missing file = nothing on order.
-    open_po = {}
+    # Open purchase orders: passed in live (Zoho) or from data/open_orders.csv (SKU_ID, Quantity). Missing = nothing on order.
+    po_source = "zoho" if open_po is not None else "csv"
     po_path = f"{data_dir}/open_orders.csv"
-    if os.path.exists(po_path):
+    if open_po is None:
+        open_po = {}
+    if po_source == "csv" and os.path.exists(po_path):
         for r in read(po_path):
             open_po[r["SKU_ID"]] = open_po.get(r["SKU_ID"], 0) + int(float(r["Quantity"]))
 
@@ -88,6 +90,12 @@ def run(data_dir="data", month=None, cfg=CONFIG):
     for r in sales:
         series.setdefault(r["SKU_ID"], {})[r["Week"]] = int(r["Units_Sold"])
 
+    stock_source = "csv"
+    if stock:                                   # live stock (Zoho) overrides the CSV for SKUs it returns
+        stock_source = "zoho"
+        for sid, u in stock.items():
+            if sid in skus:
+                inv[sid] = {"SKU_ID": sid, "Location": "Zoho", "Units_On_Hand": str(u), "As_Of_Date": today}
     as_of = max(r["As_Of_Date"] for r in inv.values())
     month = month or as_of[:7]
     is_fest = festival.get(month)
@@ -130,7 +138,8 @@ def run(data_dir="data", month=None, cfg=CONFIG):
             std_qty=std, weekly=list(zip(weeks, vals))))
     order = {"REORDER_NOW": 0, "REVIEW": 1, "REORDER": 2, "PAUSE_ORDER": 3, "OK": 4}
     results.sort(key=lambda r: (order[r["status"]], r["weeks_cover"] if r["weeks_cover"] is not None else 99))
-    return dict(as_of=as_of, month=month, festival=bool(is_fest), config=cfg, results=results)
+    return dict(as_of=as_of, month=month, festival=bool(is_fest), config=cfg, results=results,
+                sources=dict(stock=stock_source, open_orders=po_source))
 
 def max_date(s):
     from datetime import date
