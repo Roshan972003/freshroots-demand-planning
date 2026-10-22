@@ -1,0 +1,6 @@
+{
+  "functions": {
+    "api/recommendations.py": { "includeFiles": "{engine.py,data/**}" },
+    "api/overrides.py": { "includeFiles": "api/_store.py" }
+  }
+}

@@ -1,0 +1,55 @@
+"""Run the engine and write a self-contained dashboard: out/dashboard.html"""
+import json, os
+from engine import run
+
+TEMPLATE = r'''<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Freshroots Demand Planning</title>
+<style>
+:root{--bg:#fafaf7;--card:#fff;--ink:#1c1f1a;--mute:#6b7066;--line:#e4e5df;--red:#b42318;--redbg:#fde8e6;--amb:#9a5b00;--ambbg:#fff1d6;--grn:#1f6b3a;--grnbg:#e3f3e8;--blu:#1d4f91;--blubg:#e4eefb;--gry:#555;--grybg:#eee}
+@media(prefers-color-scheme:dark){:root{--bg:#141612;--card:#1c1f1a;--ink:#ecede8;--mute:#9a9f93;--line:#2c3029;--red:#ff9a8f;--redbg:#3a1a17;--amb:#f2c066;--ambbg:#352708;--grn:#7fd49a;--grnbg:#12301d;--blu:#9cc2f5;--blubg:#14263d;--gry:#bbb;--grybg:#2a2d27}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,sans-serif}
+main{max-width:1100px;margin:0 auto;padding:24px 16px 60px}h1{font-size:22px;margin:0}.sub{color:var(--mute);margin:4px 0 20px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:18px}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px;cursor:pointer}.kpi b{display:block;font-size:26px}.kpi span{color:var(--mute);font-size:13px}.kpi.on{outline:2px solid var(--ink)}
+table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+th,td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--line);font-size:14px}th{font-size:12px;color:var(--mute);text-transform:uppercase;letter-spacing:.04em}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}tr.row{cursor:pointer}tr.row:hover{background:var(--grybg)}
+.pill{padding:2px 9px;border-radius:99px;font-size:12px;font-weight:600;white-space:nowrap}
+.REORDER_NOW{background:var(--redbg);color:var(--red)}.REORDER{background:var(--ambbg);color:var(--amb)}.PAUSE_ORDER{background:var(--blubg);color:var(--blu)}.OK{background:var(--grnbg);color:var(--grn)}.REVIEW{background:var(--grybg);color:var(--gry)}
+.det td{background:var(--bg);padding:14px 16px}.det ul{margin:0 0 10px;padding-left:18px}svg{display:block}
+.bar{height:6px;background:var(--grybg);border-radius:3px;min-width:70px;position:relative}.bar i{position:absolute;top:-2px;height:10px;width:2px;background:var(--ink)}.bar u{position:absolute;left:0;top:0;height:6px;border-radius:3px;background:var(--mute)}
+.note{color:var(--mute);font-size:13px;margin-top:18px}.wrap{overflow-x:auto}
+</style></head><body><main>
+<h1>Demand Planning &mdash; Recommendations</h1>
+<div class="sub" id="sub"></div><div class="kpis" id="kpis"></div>
+<div class="wrap"><table><thead><tr><th>SKU</th><th>Status</th><th class="n">Stock</th><th class="n">Cover (wks)</th><th>vs. window</th><th class="n">Order qty</th></tr></thead><tbody id="tb"></tbody></table></div>
+<p class="note" id="rules"></p>
+</main><script>
+const D=__DATA__;let filter=null,open=null;
+const L={REORDER_NOW:'Reorder now',REORDER:'Reorder (1.5x)',PAUSE_ORDER:'Pause order',OK:'OK',REVIEW:'Needs review'};
+const $=id=>document.getElementById(id);
+function spark(w,avg){const v=w.map(x=>x[1]),mx=Math.max(...v,avg)*1.1,mn=Math.min(...v)*0.9,W=360,H=70;
+ const p=v.map((y,i)=>[i*(W/(v.length-1)),H-(y-mn)/(mx-mn)*H]);const ay=H-(avg-mn)/(mx-mn)*H;
+ const n=v.length,r=D.config.recent_weeks;
+ return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Weekly sales"><line x1="0" x2="${W}" y1="${ay}" y2="${ay}" stroke="currentColor" stroke-opacity=".35" stroke-dasharray="3"/><polyline fill="none" stroke="currentColor" stroke-width="2" points="${p.map(q=>q.join(',')).join(' ')}"/><rect x="${p[n-r][0]}" y="0" width="${W-p[n-r][0]}" height="${H}" fill="currentColor" opacity=".08"/></svg>`}
+function render(){
+ const c={};D.results.forEach(r=>c[r.status]=(c[r.status]||0)+1);
+ $('sub').textContent=`Inventory as of ${D.as_of} · planning month ${D.month}${D.festival?' (festival: +25% demand uplift)':''} · ${D.results.length} SKUs`;
+ $('kpis').innerHTML=['REORDER_NOW','REORDER','PAUSE_ORDER','REVIEW','OK'].map(s=>`<div class="kpi ${filter==s?'on':''}" data-s="${s}"><b>${c[s]||0}</b><span>${L[s]}</span></div>`).join('');
+ document.querySelectorAll('.kpi').forEach(k=>k.onclick=()=>{filter=filter==k.dataset.s?null:k.dataset.s;render()});
+ $('tb').innerHTML=D.results.filter(r=>!filter||r.status==filter).map(r=>{
+  const mx=Math.max(r.max_weeks*1.6,r.weeks_cover||0),pc=v=>Math.min(100,v/mx*100)+'%';
+  const row=`<tr class="row" data-k="${r.sku}"><td><b>${r.name.replace('Freshroots ','')}</b><br><small style="color:var(--mute)">${r.sku} · ${r.distributor}${r.perishability=='High'?' · perishable':''}</small></td><td><span class="pill ${r.status}">${L[r.status]}</span></td><td class="n">${r.stock??'–'}</td><td class="n">${r.weeks_cover??'–'}</td><td><div class="bar" title="Safe window ${r.min_weeks}-${r.max_weeks} wks"><u style="left:${pc(r.min_weeks)};width:calc(${pc(r.max_weeks)} - ${pc(r.min_weeks)});opacity:.35"></u><i style="left:${pc(r.weeks_cover||0)}"></i></div></td><td class="n">${r.recommended_qty||'–'}</td></tr>`;
+  const det=open==r.sku?`<tr class="det"><td colspan="6"><ul>${r.reasons.map(x=>`<li>${x}</li>`).join('')||'<li>Within all thresholds.</li>'}</ul>${r.weekly.length?spark(r.weekly.slice(-D.config.baseline_weeks),r.avg12)+`<small style="color:var(--mute)">Last ${D.config.baseline_weeks} weeks · dashed = 12-wk avg (${r.avg12}) · shaded = last 4 wks (${r.recent4}, ${r.spike_pct>0?'+':''}${r.spike_pct}%)</small>`:''}${r.status=='REVIEW'&&r.rule_qty?`<br><small>Rule-based qty before review: ${r.rule_qty}</small>`:''}</td></tr>`:'';
+  return row+det}).join('');
+ document.querySelectorAll('.row').forEach(t=>t.onclick=()=>{open=open==t.dataset.k?null:t.dataset.k;render()});
+ const g=D.config;$('rules').textContent=`Rules (from Raghav): spike >${g.spike_threshold*100}% over 12-wk avg → reorder ${g.high_demand_multiplier}x; cover <${g.stockout_weeks} wks → reorder now; >${g.overstock_weeks} wks → pause; perishable window ${g.perishable_min_weeks}–${g.perishable_max_weeks} wks; festival months uplift demand ${g.festival_uplift*100}%. Anything outside these rules goes to review.`}
+render();
+</script></body></html>'''
+
+if __name__ == "__main__":
+    import sys
+    res = run("data", sys.argv[1] if len(sys.argv) > 1 else None)
+    os.makedirs("out", exist_ok=True)
+    open("out/dashboard.html", "w").write(TEMPLATE.replace("__DATA__", json.dumps(res)))
+    print("wrote out/dashboard.html")
