@@ -1,5 +1,7 @@
 # Freshroots Demand Planning
 
+**Live app:** https://freshroots-demand-planning-indol.vercel.app  (no login; accept/override records are saved to Neon Postgres)
+
 Rules engine (Raghav's documented rules) + dashboard with accept/override capture. Why this was chosen: `DECISION.md`. Backtest: `BACKTEST.md`.
 
 ## Run locally
@@ -15,3 +17,9 @@ python3 engine.py       # CSV/JSON recommendations in out/
 3. Redeploy. Refresh data by replacing the CSVs in `data/` and pushing.
 
 Layout: `public/index.html` (UI), `api/recommendations.py` (runs `engine.py` on `data/`), `api/overrides.py` (accept/override records in Postgres).
+
+## More
+- `DECISION.md`: Nine Checks and Five Pre-Build Decisions
+- `BACKTEST.md`: first replay of the rules and its limits
+- `WALKTHROUGH.md`: 2-minute demo script
+- `DATA_REQUEST.md`: message asking IT for the data the real backtest needs

@@ -2,6 +2,8 @@
 
 Freshroots, Deepa's 90-day mandate. This document covers Demand Planning only.
 
+Live app: https://freshroots-demand-planning-indol.vercel.app
+
 **Verdict: build it. The system recommends, Raghav reviews, procurement places the order. The engine never places a purchase order.**
 
 ## 1. Nine Checks
