@@ -16,6 +16,9 @@ python3 engine.py       # CSV/JSON recommendations in out/
 2. In the project: Storage > Create > Neon Postgres (connects and sets `DATABASE_URL` automatically).
 3. Redeploy. Refresh data by replacing the CSVs in `data/` and pushing.
 
+## Open purchase orders (optional)
+`data/open_orders.csv` (PO_Number, SKU_ID, Quantity, Expected_Date), exported from Zoho. Units on order count as stock in the cover checks. Leave it header-only if there is nothing open. No Zoho API is used.
+
 Layout: `public/index.html` (UI), `api/recommendations.py` (runs `engine.py` on `data/`), `api/overrides.py` (accept/override records in Postgres).
 
 ## More

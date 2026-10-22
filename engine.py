@@ -23,14 +23,15 @@ def read(path):
     with open(path, newline="") as f:
         return list(csv.DictReader(f))
 
-def decide(s, vals, stock, is_fest, cfg=CONFIG):
-    """Apply Raghav's rules to one SKU. s = sku_master row, vals = weekly units (oldest first)."""
+def decide(s, vals, stock, is_fest, cfg=CONFIG, on_order=0):
+    """Apply Raghav's rules to one SKU. s = sku_master row, vals = weekly units (oldest first).
+    on_order = units already ordered but not yet received (counted as stock for the cover checks)."""
     base = vals[-cfg["baseline_weeks"]:]
     recent = vals[-cfg["recent_weeks"]:]
     avg12, recent4 = mean(base), mean(recent)
     spike = recent4 / avg12 - 1
     rate = avg12 * (1 + cfg["festival_uplift"]) if is_fest else avg12
-    cover = stock / rate
+    cover = (stock + on_order) / rate
     perish = s["Perishability"].lower() == "high"
     lo = cfg["perishable_min_weeks"] if perish else cfg["stockout_weeks"]
     hi = cfg["perishable_max_weeks"] if perish else cfg["overstock_weeks"]
@@ -45,6 +46,7 @@ def decide(s, vals, stock, is_fest, cfg=CONFIG):
     reasons, review = [], []
     if is_fest: reasons.append(f"Festival month: demand rate uplifted {cfg['festival_uplift']:.0%} ({avg12:.0f} -> {rate:.0f}/wk)")
     if high: reasons.append(f"Last 4 wks avg {recent4:.0f} is {spike:+.0%} vs 12-wk avg {avg12:.0f} (> +20%)")
+    if on_order: reasons.append(f"{on_order} units already on order are counted in stock")
     if "STOCKOUT_RISK" in flags: reasons.append(f"Cover {cover:.1f} wks < {lo} wk minimum")
     if "OVERSTOCK_RISK" in flags: reasons.append(f"Cover {cover:.1f} wks > {hi} wk maximum")
     if perish: reasons.append("High perishability: tight 3-4 wk window")
@@ -62,11 +64,11 @@ def decide(s, vals, stock, is_fest, cfg=CONFIG):
         review.append("Conflicting signals: demand spike but overstocked")
 
     # Guard: a rule-driven order must not itself breach the overstock limit.
-    if qty and (stock + qty) / rate > hi:
-        review.append(f"Rule order of {qty} would push cover to {(stock+qty)/rate:.1f} wks (> {hi} max)")
+    if qty and (stock + on_order + qty) / rate > hi:
+        review.append(f"Rule order of {qty} would push cover to {(stock+on_order+qty)/rate:.1f} wks (> {hi} max)")
     return dict(flags=flags, reasons=reasons, review=review, status=status, action=action, qty=qty,
                 avg12=avg12, recent4=recent4, spike=spike, rate=rate, cover=cover,
-                lo=lo, hi=hi, std=std, stock=stock, perish=perish)
+                lo=lo, hi=hi, std=std, stock=stock, perish=perish, on_order=on_order)
 
 def run(data_dir="data", month=None, cfg=CONFIG):
     sales = read(f"{data_dir}/weekly_sales.csv")
@@ -74,6 +76,13 @@ def run(data_dir="data", month=None, cfg=CONFIG):
     dists = {r["Distributor_ID"]: r for r in read(f"{data_dir}/distributor_master.csv")}
     inv = {r["SKU_ID"]: r for r in read(f"{data_dir}/current_inventory.csv")}
     festival = {r["Year_Month"]: r["Is_Festival_Month"].upper() == "TRUE" for r in read(f"{data_dir}/calendar.csv")}
+
+    # Optional: open purchase orders exported from Zoho (SKU_ID, Quantity). Missing file = nothing on order.
+    open_po = {}
+    po_path = f"{data_dir}/open_orders.csv"
+    if os.path.exists(po_path):
+        for r in read(po_path):
+            open_po[r["SKU_ID"]] = open_po.get(r["SKU_ID"], 0) + int(float(r["Quantity"]))
 
     series = {}
     for r in sales:
@@ -101,7 +110,7 @@ def run(data_dir="data", month=None, cfg=CONFIG):
                 demand_rate=None, weeks_cover=None, min_weeks=None, max_weeks=None, weekly=[]))
             continue
 
-        d_ = decide(s, vals, int(inv_row["Units_On_Hand"]), is_fest, cfg)
+        d_ = decide(s, vals, int(inv_row["Units_On_Hand"]), is_fest, cfg, open_po.get(sid, 0))
         flags, reasons, status, action, qty = d_["flags"], d_["reasons"], d_["status"], d_["action"], d_["qty"]
         avg12, recent4, spike, rate, cover = d_["avg12"], d_["recent4"], d_["spike"], d_["rate"], d_["cover"]
         lo, hi, std, stock, perish = d_["lo"], d_["hi"], d_["std"], d_["stock"], d_["perish"]
@@ -116,7 +125,7 @@ def run(data_dir="data", month=None, cfg=CONFIG):
         results.append(dict(sku=sid, name=s["SKU_Name"], category=s["Category"], perishability=s["Perishability"],
             distributor=d["Distributor_Name"] if d else s["Distributor_ID"], status=status, action=action,
             flags=flags, reasons=reasons, recommended_qty=qty if status != "REVIEW" else 0,
-            rule_qty=qty, stock=stock, avg12=round(avg12, 1), recent4=round(recent4, 1), spike_pct=round(spike*100, 1),
+            rule_qty=qty, stock=stock, on_order=d_["on_order"], avg12=round(avg12, 1), recent4=round(recent4, 1), spike_pct=round(spike*100, 1),
             demand_rate=round(rate, 1), weeks_cover=round(cover, 1), min_weeks=lo, max_weeks=hi,
             std_qty=std, weekly=list(zip(weeks, vals))))
     order = {"REORDER_NOW": 0, "REVIEW": 1, "REORDER": 2, "PAUSE_ORDER": 3, "OK": 4}

@@ -42,7 +42,8 @@ Fewer stockouts and fewer overstock write-offs, for procurement and the CEO. Mea
 - *To record on the first run:* last quarter's actual stockout and write-off figures from SAP and Zoho, so the 90-day comparison uses real numbers.
 
 **3. Workflow change: what human process must change for the tool to work?**
-- IT drops a fresh SAP sales export and inventory export into `data/` twice a week.
+- IT drops a fresh SAP sales export and inventory export into `data/` twice a week. Open Zoho purchase orders go in `data/open_orders.csv` (columns: PO_Number, SKU_ID, Quantity, Expected_Date). The engine counts units already on order as stock, so it won't recommend ordering what is already on its way. No Zoho API integration is needed, and the tool never writes to Zoho.
+- If `open_orders.csv` is empty or out of date, procurement checks Zoho before acting on a "reorder now" flag.
 - Raghav reviews the output and the review queue instead of building the forecast.
 - Procurement orders from the recommendations (a human places every order).
 - Raghav's overrides are logged, so the rules can be improved.
@@ -77,6 +78,6 @@ Proposed, with thresholds for Deepa to confirm. Shut it down, or go back and reb
 ## 4. Risks and open items
 
 - **Real backtest not done yet.** A first replay on the 16-week seed (see `BACKTEST.md`) points the right way but is too thin to test the kill criterion. The thresholds are Raghav's, not tuned.
-- **Data gaps:** the seed is per-SKU weekly (the case describes distributor-level data), there is one warehouse, and open Zoho purchase orders aren't netted off stock.
+- **Data gaps:** the seed is per-SKU weekly (the case describes distributor-level data), there is one warehouse, and open Zoho purchase orders are only counted if IT keeps `data/open_orders.csv` current (the seed file is empty).
 - **Targets are proposals.** The 50% loss reduction and the 40% override limit are mine, not the case's.
 - **Adoption:** Raghav must see the engine as helping him. Every flag shows its reasons.

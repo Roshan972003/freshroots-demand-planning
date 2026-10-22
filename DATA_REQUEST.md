@@ -9,7 +9,7 @@ We have a first version of the demand planning tool running on a small sample (1
 
 1. **Weekly sales history, 3 years.** One row per SKU per week with units sold, ideally split by distributor. This is the data IT confirmed can be exported from SAP.
 2. **Inventory history.** Weekly stock on hand per SKU and location for the same period. If snapshots don't exist, goods receipts and issues will do, so we can rebuild stock.
-3. **Purchase orders from Zoho Inventory.** Order date, SKU, quantity, expected and actual delivery date. This also gives us supplier lead times, and lets us stop recommending reorders for stock that is already on its way.
+3. **Purchase orders from Zoho Inventory.** Order date, SKU, quantity, expected and actual delivery date. This gives us supplier lead times for the backtest. Going forward we also need a twice-weekly export of *open* orders (PO number, SKU, quantity, expected date), so the tool stops recommending reorders for stock already on its way. A CSV export is enough; no API is needed.
 4. **Stockout and write-off records.** Any list of SKUs that ran out before a delivery, and overstock written off, with dates and units or value. Even a rough list from Raghav or procurement helps.
 5. **SKU prices or cost per unit**, so results can be shown in rupees and not only units.
 
