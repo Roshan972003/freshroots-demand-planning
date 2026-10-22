@@ -42,7 +42,7 @@ Fewer stockouts and fewer overstock write-offs, for procurement and the CEO. Mea
 - *To record on the first run:* last quarter's actual stockout and write-off figures from SAP and Zoho, so the 90-day comparison uses real numbers.
 
 **3. Workflow change: what human process must change for the tool to work?**
-- IT drops a fresh SAP sales export and inventory export into `data/` twice a week. Open Zoho purchase orders go in `data/open_orders.csv` (columns: PO_Number, SKU_ID, Quantity, Expected_Date). The engine counts units already on order as stock, so it won't recommend ordering what is already on its way. The tool can also read open orders (and optionally stock) live from Zoho Inventory when configured, falling back to the CSV if Zoho is down.
+- IT drops a fresh SAP sales export and inventory export into `data/` twice a week. Open Zoho purchase orders go in `data/open_orders.csv` (columns: PO_Number, SKU_ID, Quantity, Expected_Date). The engine counts units already on order as stock, so it won't recommend ordering what is already on its way. The tool can also read open orders (and optionally stock) live from Zoho Inventory when configured, falling back to the CSV if Zoho is down. Until a real Zoho account is connected, a clearly labelled demo sandbox simulates Zoho so the integration can be shown end to end.
 - If `open_orders.csv` is empty or out of date, procurement checks Zoho before acting on a "reorder now" flag.
 - Raghav reviews the output and the review queue instead of building the forecast.
 - Procurement orders from the recommendations (a human places every order). If enabled, the tool can create a **draft** purchase order in Zoho for a decided SKU, but a person reviews and issues it there. It never issues an order itself.

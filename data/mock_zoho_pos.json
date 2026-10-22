@@ -1,0 +1,10 @@
+{
+  "purchaseorders": [
+    {"purchaseorder_id": "DEMO-PO-1", "purchaseorder_number": "PO-DEMO-0001", "status": "open", "vendor_name": "Demo Supplier",
+     "line_items": [{"sku": "SKU004", "quantity": 150, "quantity_received": 0}]},
+    {"purchaseorder_id": "DEMO-PO-2", "purchaseorder_number": "PO-DEMO-0002", "status": "open", "vendor_name": "Demo Supplier",
+     "line_items": [{"sku": "SKU013", "quantity": 400, "quantity_received": 100}]},
+    {"purchaseorder_id": "DEMO-PO-3", "purchaseorder_number": "PO-DEMO-0003", "status": "billed", "vendor_name": "Demo Supplier",
+     "line_items": [{"sku": "SKU001", "quantity": 500, "quantity_received": 500}]}
+  ]
+}

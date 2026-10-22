@@ -75,3 +75,28 @@ class T(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+class MockMode(unittest.TestCase):
+    """ZOHO_MODE=mock exercises the real client code against the in-app simulated Zoho."""
+    def setUp(self):
+        import importlib; importlib.reload(_zoho)
+        for k in ("ZOHO_CLIENT_ID", "ZOHO_CLIENT_SECRET", "ZOHO_REFRESH_TOKEN", "ZOHO_ORG_ID", "ZOHO_SYNC_STOCK"): os.environ.pop(k, None)
+        os.environ["ZOHO_MODE"] = "mock"; os.environ["ZOHO_ALLOW_DRAFT_PO"] = "true"
+        os.environ["TMPDIR"] = "/tmp/zoho_mock_test"; os.makedirs("/tmp/zoho_mock_test", exist_ok=True)
+        p = "/tmp/zoho_mock_test/freshroots_overrides.db"
+        if os.path.exists(p): os.remove(p)
+    def tearDown(self): os.environ.pop("ZOHO_MODE", None); os.environ.pop("ZOHO_ALLOW_DRAFT_PO", None)
+
+    def test_open_pos_and_stock(self):
+        import _store; _store.DATABASE_URL = None
+        self.assertEqual(_zoho.open_po_units(), {"SKU004": 150, "SKU013": 300})   # billed PO ignored, received netted
+        self.assertEqual(_zoho.stock_on_hand()["SKU004"], 180)
+
+    def test_draft_po_roundtrip(self):
+        import _store; _store.DATABASE_URL = None
+        out = _zoho.create_draft_po("SKU011", 500, os.path.join(ROOT, "data"), "ref")
+        self.assertEqual(out["status"], "draft")
+        self.assertEqual(_zoho.open_po_units().get("SKU011"), None)   # drafts are not "open"
+        r = recommendations.build()
+        self.assertEqual(r["zoho"]["mode"], "demo")
+        self.assertEqual({x["sku"]: x["status"] for x in r["results"]}["SKU004"], "OK")

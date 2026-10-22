@@ -2,6 +2,7 @@
 
 Config (Vercel env vars, never in code):
   ZOHO_CLIENT_ID, ZOHO_CLIENT_SECRET, ZOHO_REFRESH_TOKEN, ZOHO_ORG_ID   required
+  ZOHO_MODE=mock             simulated Zoho (demo sandbox) instead; no credentials needed
   ZOHO_DC                    data center suffix: in (default), com, eu, com.au
   ZOHO_SYNC_STOCK=true       use Zoho stock on hand instead of data/current_inventory.csv
   ZOHO_OPEN_PO_STATUSES      comma list of PO statuses counted as open (default: open)
@@ -17,7 +18,16 @@ class ZohoError(Exception):
 def _env(k, d=""):
     return os.environ.get(k, d)
 
+def mock_mode():
+    """ZOHO_MODE=mock uses the in-app simulated Zoho (api/_mock_zoho.py), for demos without a real Zoho account."""
+    return _env("ZOHO_MODE").lower() == "mock"
+
+def mode():
+    return "demo" if mock_mode() else "live"
+
 def configured():
+    if mock_mode():
+        return True
     return all(_env(k) for k in ("ZOHO_CLIENT_ID", "ZOHO_CLIENT_SECRET", "ZOHO_REFRESH_TOKEN", "ZOHO_ORG_ID"))
 
 def sync_stock():
@@ -27,6 +37,9 @@ def draft_enabled():
     return configured() and _env("ZOHO_ALLOW_DRAFT_PO").lower() in ("1", "true", "yes")
 
 def _http(method, url, headers=None, body=None):
+    if mock_mode():
+        import _mock_zoho
+        return _mock_zoho.respond(method, url, body)
     data = json.dumps(body).encode() if body is not None else None
     req = urllib.request.Request(url, data=data, method=method, headers=dict(headers or {}))
     if body is not None:
@@ -98,7 +111,7 @@ def _vendor_for(sku, data_dir):
             for r in csv.DictReader(f):
                 if r["SKU_ID"] == sku and r.get("Vendor_ID"):
                     return r["Vendor_ID"]
-    v = _env("ZOHO_DEFAULT_VENDOR_ID")
+    v = _env("ZOHO_DEFAULT_VENDOR_ID") or ("Demo Supplier" if mock_mode() else "")
     if not v:
         raise ZohoError("No vendor for this SKU: set ZOHO_DEFAULT_VENDOR_ID or add it to data/zoho_vendors.csv")
     return v

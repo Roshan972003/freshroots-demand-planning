@@ -11,7 +11,7 @@ import _zoho
 def build(month=None):
     """Run the engine; use live Zoho data when configured, falling back to the CSVs on any Zoho error."""
     data = os.path.join(ROOT, "data")
-    zoho = dict(configured=_zoho.configured(), draft_enabled=_zoho.draft_enabled(), error=None)
+    zoho = dict(configured=_zoho.configured(), draft_enabled=_zoho.draft_enabled(), mode=_zoho.mode(), error=None)
     kw = {}
     if zoho["configured"]:
         try:

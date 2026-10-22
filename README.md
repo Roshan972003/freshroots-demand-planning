@@ -16,6 +16,9 @@ python3 engine.py       # CSV/JSON recommendations in out/
 2. In the project: Storage > Create > Neon Postgres (connects and sets `DATABASE_URL` automatically).
 3. Redeploy. Refresh data by replacing the CSVs in `data/` and pushing.
 
+## Zoho demo sandbox (no Zoho account needed)
+`ZOHO_MODE=mock` makes the app talk to a **simulated** Zoho Inventory (`api/_mock_zoho.py`) through the same client code as the real link: open POs and stock come from `data/` and `data/mock_zoho_pos.json`, and draft POs created with the button are stored in the app database. The header says "Zoho DEMO SANDBOX, simulated". It is a stand-in for demos and testing, not real Zoho data. Remove `ZOHO_MODE` and add real credentials (below) to go live.
+
 ## Zoho Inventory link (optional, off until env vars are set)
 Read-only by default: live open purchase orders count as stock. Falls back to the CSVs if Zoho is unreachable, and the dashboard says so.
 1. In the Zoho API console (api-console.zoho.in, or your data center) create a **Self Client**. Scopes: `ZohoInventory.items.READ,ZohoInventory.purchaseorders.READ` (add `ZohoInventory.purchaseorders.CREATE` only for draft POs). Generate a grant code and exchange it once for a **refresh token**.
