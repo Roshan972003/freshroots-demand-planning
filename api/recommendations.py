@@ -44,13 +44,23 @@ def build(month=None, festival=None, demand_adj=0.0, simulate_shift=False, simul
     return res
 
 class handler(BaseHTTPRequestHandler):
+    def _reply(self, code, obj):
+        body = json.dumps(obj).encode()
+        self.send_response(code)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers(); self.wfile.write(body)
+
     def do_GET(self):
         q = parse_qs(urlparse(self.path).query)
         month = (q.get("month") or [None])[0]
         fest = (q.get("festival") or [None])[0]
         fest = None if fest is None else fest.lower() in ("1", "true", "on")
         try:
-            adj = max(-0.5, min(0.5, float((q.get("adj") or ["0"])[0]) / 100))   # what-if demand change, percent
+            try:
+                adj = max(-0.5, min(0.5, float((q.get("adj") or ["0"])[0]) / 100))   # what-if demand change, percent
+            except ValueError:
+                return self._reply(400, {"error": "adj must be a number (percent)"})
             sc = (q.get("scenario") or [""])[0]
             live = (q.get("live") or [""])[0] in ("1", "true")
             body, code = json.dumps(build(month, fest, adj, sc == "shift", sc == "churn", live)).encode(), 200

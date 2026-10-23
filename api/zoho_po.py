@@ -23,6 +23,8 @@ class handler(BaseHTTPRequestHandler):
             self._send(200, _zoho.create_draft_po(sku, qty, os.path.join(HERE, "..", "data"), ref))
         except (KeyError, ValueError, TypeError) as e:
             self._send(400, {"error": f"bad request: {e}"})
+        except _zoho.ZohoInputError as e:
+            self._send(400, {"error": str(e)})
         except _zoho.ZohoError as e:
             self._send(502, {"error": str(e)})
         except Exception as e:

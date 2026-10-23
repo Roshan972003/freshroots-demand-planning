@@ -25,7 +25,14 @@ Read-only by default: live open purchase orders count as stock. Falls back to th
 2. In Vercel > Settings > Environment Variables add: `ZOHO_CLIENT_ID`, `ZOHO_CLIENT_SECRET`, `ZOHO_REFRESH_TOKEN`, `ZOHO_ORG_ID` (Zoho Inventory > Settings > Organization Profile), and `ZOHO_DC` (`in` default, `com`, `eu`, `com.au`). Mark the secrets Sensitive.
 3. Optional: `ZOHO_SYNC_STOCK=true` (use Zoho stock instead of `current_inventory.csv`), `ZOHO_OPEN_PO_STATUSES` (default `open`), `ZOHO_ALLOW_DRAFT_PO=true` plus `ZOHO_DEFAULT_VENDOR_ID` (or `data/zoho_vendors.csv` with SKU_ID,Vendor_ID) to show a "Create draft PO in Zoho" button after a decision. Drafts only: a person reviews and issues them in Zoho.
 4. Zoho item SKU codes must match the SKU IDs here (SKU001...). Redeploy.
-Tests with a mocked Zoho: `python3 -m unittest tests.test_zoho -v`. Not yet run against a real Zoho account.
+Tests with a mocked Zoho: `python3 -m unittest tests.test_zoho -v`. **Not yet run against a real Zoho account.**
+
+Checked against Zoho's published API docs, and what to watch on the first real run:
+- Auth header `Zoho-oauthtoken`, base `https://www.zohoapis.<dc>/inventory/v1`, `organization_id` on every call, 100 requests/minute per organization (the client reads at most `ZOHO_MAX_PO_DETAILS` purchase orders, default 60).
+- The items list may not include `stock_on_hand`. If it doesn't, stock sync raises and the app keeps the CSV stock and shows a warning, rather than treating missing stock as zero.
+- Purchase orders are listed without a status filter (its values are undocumented); draft, cancelled and closed ones are skipped, and open units are `quantity - quantity_received` per line.
+- Zoho documents `purchaseorder_number` as required when creating a PO. The client first omits it (works with auto-numbering) and retries once with a generated `DP-<timestamp>` if Zoho rejects that.
+- Response wrapper keys `purchaseorder` and `purchase_order` are both accepted.
 
 ## Open purchase orders from CSV (used when Zoho is not configured)
 `data/open_orders.csv` (PO_Number, SKU_ID, Quantity, Expected_Date), exported from Zoho. Units on order count as stock in the cover checks. Leave it header-only if there is nothing open. No Zoho API is used.
@@ -35,5 +42,6 @@ Layout: `public/index.html` (UI), `api/recommendations.py` (runs `engine.py` on 
 ## More
 - `DECISION.md`: Nine Checks and Five Pre-Build Decisions
 - `BACKTEST.md`: first replay of the rules and its limits
-- `WALKTHROUGH.md`: 2-minute demo script
+- `WALKTHROUGH.md`: demo script
+- `build_dashboard.py` / `out/dashboard.html`: an older static view, kept for offline use
 - `DATA_REQUEST.md`: message asking IT for the data the real backtest needs

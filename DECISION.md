@@ -71,7 +71,7 @@ Proposed, with thresholds for Deepa to confirm. Shut it down, or go back and reb
 ## 3. What was built
 
 - `engine.py` encodes Raghav's rules (spike, stockout, overstock, festival uplift, perishable window) and the review-queue triggers.
-- `out/dashboard.html` shows status, cover and reasoning for each SKU.
+- The live app (`public/index.html` with the `api/` functions) shows status, cover and reasoning for each SKU and records planner decisions. `out/dashboard.html` from `build_dashboard.py` is an older static view.
 - `run_weekly.sh` refreshes the outputs and archives each run.
 - On 19 Oct 2026 (a festival month) it flags 5 SKUs for reorder now, 2 to pause and 8 as fine.
 
