@@ -72,43 +72,50 @@ def decide(s, vals, stock, is_fest, cfg=CONFIG, on_order=0, demand_adj=0.0):
                 avg12=avg12, recent4=recent4, spike=spike, rate=rate, cover=cover,
                 lo=lo, hi=hi, std=std, stock=stock, perish=perish, on_order=on_order)
 
-def find_anomalies(series, skus, dists, threshold=0.20, simulate_region=None, drop=0.22):
-    """Latest week vs the mean of the prior 4 weeks, per SKU and per region (sum of the region's SKUs).
-    simulate_region: scale that region's latest week down by `drop` (a labelled what-if, not real data)."""
-    by_sku, by_region, sku_region = {}, {}, {}
+def find_anomalies(series, skus, dists, threshold=0.20, simulate=None, churn_threshold=0.30):
+    """Latest week vs the mean of the prior 4 weeks, per region and per distributor (sums of their SKUs).
+    simulate = ("region", "Maharashtra", 0.22) or ("dist", "DIST002", 0.35): scale that group's latest week so it
+    sits `drop` below its 4-week mean. A labelled what-if, not real data."""
+    vals_by_sku, region_of, dist_of = {}, {}, {}
     for sid, sku in skus.items():
         wk = sorted(series.get(sid, {}))
-        vals = [float(series[sid][w]) for w in wk]
-        if len(vals) < 5:
+        v = [float(series[sid][w]) for w in wk]
+        if len(v) < 5:
             continue
-        region = (dists.get(sku["Distributor_ID"]) or {}).get("Region", "Unknown")
-        by_sku[sid], sku_region[sid] = vals, region
-        agg = by_region.setdefault(region, [0.0] * 5)
-        for i, v in enumerate(vals[-5:]):
-            agg[i] += v
-    if simulate_region in by_region:
-        agg = by_region[simulate_region]
-        k = (1 - drop) * mean(agg[:-1]) / agg[-1]          # scale so the region's latest week is `drop` below its 4-week mean
-        agg[-1] *= k
-        for sid, r in sku_region.items():
-            if r == simulate_region:
-                by_sku[sid][-1] *= k
-    def chg(vals):
-        base = mean(vals[-5:-1])
-        return (round((vals[-1] / base - 1) * 100, 1), round(vals[-1], 1), round(base, 1)) if base else None
-    regions, sku_list = [], []
-    for region, vals in by_region.items():
-        c = chg(vals)
-        if c and abs(c[0]) >= threshold * 100:
-            regions.append(dict(region=region, change_pct=c[0], latest=c[1], baseline=c[2],
-                                skus=[sid for sid, sk in skus.items() if (dists.get(sk["Distributor_ID"]) or {}).get("Region") == region]))
-    for sid, vals in by_sku.items():
-        c = chg(vals)
-        if c and abs(c[0]) >= threshold * 100:
-            sku_list.append(dict(sku=sid, change_pct=c[0]))
-    return dict(threshold_pct=threshold * 100, simulated=bool(simulate_region), regions=regions, skus=sku_list)
+        vals_by_sku[sid] = v[-5:]
+        dist_of[sid] = sku["Distributor_ID"]
+        region_of[sid] = (dists.get(sku["Distributor_ID"]) or {}).get("Region", "Unknown")
+    def total(sids):
+        return [sum(vals_by_sku[s][i] for s in sids) for i in range(5)]
+    if simulate:
+        kind, name, drop = simulate
+        group = [s for s in vals_by_sku if (region_of[s] if kind == "region" else dist_of[s]) == name]
+        if group:
+            t = total(group)
+            k = (1 - drop) * mean(t[:-1]) / t[-1]
+            for s in group:
+                vals_by_sku[s][-1] *= k
+    def chg(sids):
+        t = total(sids)
+        base = mean(t[:-1])
+        return None if not base else dict(change_pct=round((t[-1] / base - 1) * 100, 1), latest=round(t[-1], 1), baseline=round(base, 1))
+    regions, dist_list = [], []
+    for region in sorted(set(region_of.values())):
+        sids = [s for s in vals_by_sku if region_of[s] == region]
+        c = chg(sids)
+        if c and abs(c["change_pct"]) >= threshold * 100:
+            regions.append(dict(region=region, skus=sids, **c))
+    for did in sorted(set(dist_of.values())):
+        sids = [s for s in vals_by_sku if dist_of[s] == did]
+        c = chg(sids)
+        if c:
+            dist_list.append(dict(distributor_id=did, name=(dists.get(did) or {}).get("Distributor_Name", did),
+                                  region=(dists.get(did) or {}).get("Region", "Unknown"), skus=sids,
+                                  churn_risk=c["change_pct"] <= -churn_threshold * 100, **c))
+    return dict(threshold_pct=threshold * 100, churn_threshold_pct=churn_threshold * 100, simulated=bool(simulate),
+                simulation=simulate[1] if simulate else None, regions=regions, distributors=dist_list)
 
-def run(data_dir="data", month=None, cfg=CONFIG, open_po=None, stock=None, today=None, festival=None, demand_adj=0.0, open_po_detail=None, simulate_shift=False):
+def run(data_dir="data", month=None, cfg=CONFIG, open_po=None, stock=None, today=None, festival=None, demand_adj=0.0, open_po_detail=None, simulate_shift=False, simulate_churn=False):
     sales = read(f"{data_dir}/weekly_sales.csv")
     skus = {r["SKU_ID"]: r for r in read(f"{data_dir}/sku_master.csv")}
     dists = {r["Distributor_ID"]: r for r in read(f"{data_dir}/distributor_master.csv")}
@@ -185,7 +192,7 @@ def run(data_dir="data", month=None, cfg=CONFIG, open_po=None, stock=None, today
     return dict(as_of=as_of, month=month, festival=bool(is_fest), calendar_festival=bool(calendar_fest), demand_adj=demand_adj,
                 config=cfg, results=results,
                 sources=dict(stock=stock_source, open_orders=po_source), open_pos=open_po_detail or [],
-                anomalies=find_anomalies(series, skus, dists, simulate_region="Maharashtra" if simulate_shift else None))
+                anomalies=find_anomalies(series, skus, dists, simulate=("region", "Maharashtra", 0.22) if simulate_shift else (("dist", "DIST002", 0.35) if simulate_churn else None)))
 
 def max_date(s):
     from datetime import date

@@ -48,6 +48,21 @@ tr.row:hover td{background:color-mix(in srgb,var(--inset) 40%,transparent)}
 .err{color:var(--bad);margin-top:8px;font-weight:600}.okmsg{color:var(--brand);margin-top:8px;font-weight:600}
 svg{display:block;color:var(--brand)}
 .note{color:var(--mute);font-size:12px;margin-top:16px}
+tr.row.fx td{background:color-mix(in srgb,var(--brand) 10%,transparent)}tr.row.fx td:first-child{box-shadow:inset 3px 0 var(--brand)}
+.kov{position:fixed;inset:0;background:rgba(2,6,23,.8);backdrop-filter:blur(8px);display:none;z-index:30;padding:12vh 16px 0}.kov.on{display:block}
+.kbox{max-width:560px;margin:0 auto;background:var(--panel);border:1px solid var(--inset);border-radius:14px;overflow:hidden}
+.kbox input{width:100%;border:0;border-bottom:1px solid var(--inset);background:transparent;color:var(--ink);font:inherit;font-size:16px;padding:14px 16px;outline:none}
+.kbox ul{list-style:none;margin:0;padding:6px;max-height:50vh;overflow-y:auto}.kbox li{padding:9px 12px;border-radius:8px;cursor:pointer}.kbox li.sel{background:var(--brand);color:#04130d;font-weight:600}.kbox li.none{color:var(--mute);cursor:default}
+kbd{font:600 11px "JetBrains Mono",monospace;padding:2px 6px;border-radius:5px;border:1px solid var(--inset);background:var(--bg)}
+#toasts{position:fixed;right:14px;bottom:14px;z-index:50;display:flex;flex-direction:column;gap:10px;width:min(380px,calc(100% - 28px))}
+.toast{background:var(--panel);border:1px solid var(--inset);border-left:3px solid var(--warn);border-radius:10px;padding:12px 14px;box-shadow:0 8px 24px rgba(0,0,0,.35);font-size:13px}
+.toast .ta{display:flex;gap:8px;margin-top:8px;align-items:center;flex-wrap:wrap}.toast .x{float:right;border:0;background:none;padding:0 4px;color:var(--mute);font-size:16px}
+.ring{width:34px;height:34px;transform:rotate(-90deg)}.ring circle{fill:none;stroke-width:3.5}.ring .bg{stroke:var(--inset)}.ring .fg{stroke:var(--brand);stroke-dasharray:88;stroke-dashoffset:0;transition:stroke-dashoffset 10s linear}.ring .fg.go{stroke-dashoffset:88}
+.split{display:grid;grid-template-columns:1fr 1fr;gap:8px}.split>div{padding:10px;border-radius:10px;background:var(--bg)}.split h4{margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--mute)}.split b{font-size:20px}
+@keyframes pulse{0%{transform:scale(1);opacity:.85}100%{transform:scale(2.1);opacity:0}}
+.pr{transform-box:fill-box;transform-origin:center;animation:pulse 1.6s ease-out infinite}
+.node{cursor:pointer}.node:hover circle.c{stroke:var(--ink);stroke-width:2}
+
 .tick{padding:10px 14px;border-radius:10px;margin-bottom:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;border:1px solid}
 .tick.warn{background:color-mix(in srgb,var(--warnbg) 70%,transparent);border-color:color-mix(in srgb,var(--warn) 40%,transparent);color:var(--ink)}
 .tick.warn b{color:var(--warn)}.tick.ok{background:var(--panel);border-color:var(--inset);color:var(--mute)}
@@ -63,7 +78,7 @@ select,input[type=date]{font:inherit;padding:6px 9px;border-radius:8px;border:1p
 <main>
 <header>
   <div><h1>Freshroots Demand Planning Control Tower</h1><div class="sub" id="sub">Loading…</div></div>
-  <div class="ctl"><span class="sw" id="fest" role="switch" tabindex="0"><i></i><span id="festLabel">Festival uplift +25%</span></span></div>
+  <div class="ctl"><button id="kbtn" title="Command menu"><kbd>⌘K</kbd> Commands</button><span class="sw" id="fest" role="switch" tabindex="0"><i></i><span id="festLabel">Festival uplift +25%</span></span></div>
 </header>
 <div id="ticker"></div>
 
@@ -91,6 +106,11 @@ select,input[type=date]{font:inherit;padding:6px 9px;border-radius:8px;border:1p
 <section class="sec"><h2>Distributors</h2><div class="card wrap"><table>
 <thead><tr><th>Distributor</th><th>Region</th><th class="n">SKUs</th><th class="n">Stockout risk</th><th></th></tr></thead><tbody id="dtb"></tbody></table></div></section>
 
+<section class="sec"><h2>Distributor network &amp; churn risk</h2><div class="card">
+<div class="bar"><button id="simChurn">Simulate churn: GrainPath −35%</button><button id="endChurn" style="display:none">End simulation</button>
+<span class="tag"><span style="color:var(--brand)">●</span> healthy · <span style="color:var(--warn)">●</span> order volume down 10–30% · <span style="color:var(--bad)">●</span> pulsing: churn risk (down 30%+). Schematic by region, not to scale: the data has no city locations.</span></div>
+<div id="net"></div></div></section>
+
 <section class="sec"><h2>Stock depletion burn-down</h2><div class="card">
 <div class="bar"><label>SKU <select id="bsku"></select></label><label>Supplier lead time <select id="blead"><option value="1">1 wk</option><option value="2" selected>2 wks</option><option value="3">3 wks</option></select></label><span class="tag">Assumed lead time; the data has none.</span></div>
 <div id="burn"></div></div></section>
@@ -100,11 +120,17 @@ select,input[type=date]{font:inherit;padding:6px 9px;border-radius:8px;border:1p
 </main>
 
 <div class="ov" id="ov"></div>
+<div id="toasts" aria-live="polite"></div>
+<div class="kov" id="kov"><div class="kbox"><input id="kin" placeholder="Type a command or SKU…  (↑ ↓ Enter, Esc)" autocomplete="off"><ul id="kl"></ul></div></div>
+<div class="kov" id="help"><div class="kbox" style="padding:16px"><b>Keyboard shortcuts</b><table style="margin-top:8px">
+<tr><td><kbd>⌘/Ctrl K</kbd></td><td>Command menu</td></tr><tr><td><kbd>J</kbd> / <kbd>K</kbd></td><td>Next / previous SKU row</td></tr>
+<tr><td><kbd>A</kbd></td><td>Approve the focused row's reorder</td></tr><tr><td><kbd>E</kbd></td><td>Edit / override the focused row</td></tr>
+<tr><td><kbd>P</kbd></td><td>Pause: log a hold on the focused SKU's open POs (10 s to undo)</td></tr><tr><td><kbd>?</kbd></td><td>This sheet</td></tr><tr><td><kbd>Esc</kbd></td><td>Close</td></tr></table></div></div>
 <aside class="drawer" id="dr" aria-label="SKU review"></aside>
 <aside class="drawer" id="dr2" aria-label="Panel"></aside>
 
 <script>
-let D=null,OV={},filter=null,open=null,sel=new Set(),tag='',msg='',ok='',fest=null,adj=0,shift=false,burnSku=null,lead=2,SC={name:'',expiry:'',sku:'',ds:new Set()};
+let D=null,OV={},filter=null,open=null,sel=new Set(),tag='',msg='',ok='',fest=null,adj=0,scen='',fx=-1,lastTK='',burnSku=null,lead=2,SC={name:'',expiry:'',sku:'',ds:new Set()};
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const TAGS=["Competitor scheme","Distributor onboarding","Unseasonal weather","Trade promotion","New launch","Distributor anomaly","Other"];
@@ -113,7 +139,7 @@ const simulating=()=>adj!==0||(D&&fest!==null&&fest!==D.calendar_festival);
 
 async function load(){
   try{
-    const q=new URLSearchParams();if(fest!==null)q.set('festival',fest?'1':'0');if(adj)q.set('adj',adj);if(shift)q.set('scenario','shift');
+    const q=new URLSearchParams();if(fest!==null)q.set('festival',fest?'1':'0');if(adj)q.set('adj',adj);if(scen)q.set('scenario',scen);
     D=await (await fetch('/api/recommendations?'+q)).json();if(D.error)throw new Error(D.error);
     if(fest===null)fest=D.festival;
     OV={};(await (await fetch('/api/overrides?as_of='+D.as_of)).json()).forEach(x=>OV[x.sku]=x);
@@ -157,7 +183,7 @@ function render(){
   document.querySelectorAll('[data-r]').forEach(b=>b.onclick=()=>{open=b.dataset.r;tag=OV[open]?.tag||'';msg=ok='';drawer()});
   document.querySelectorAll('input[data-s]').forEach(b=>b.onchange=()=>{b.checked?sel.add(b.dataset.s):sel.delete(b.dataset.s);bar()});
   const g=D.config;$('rules').textContent=`Rules (Raghav): spike >${g.spike_threshold*100}% over 12-wk avg → reorder ${g.high_demand_multiplier}x · cover <${g.stockout_weeks} wks → reorder now · >${g.overstock_weeks} wks → pause · perishable ${g.perishable_min_weeks}–${g.perishable_max_weeks} wks · festival months +${g.festival_uplift*100}% demand. Anything outside the rules goes to review.`;
-  bar();ticker();dists();burnUi();if(open)drawer();
+  bar();ticker();dists();net();burnUi();if(fx>=0)setFx(fx);if(open)drawer();
 }
 function bar(){
   const n=[...sel].filter(s=>D.results.find(r=>r.sku===s&&actionable(r))).length,canDraft=D.zoho&&D.zoho.draft_enabled;
@@ -171,13 +197,16 @@ function spark(w,avg,r4){
 }
 function drawer(){
   const r=D.results.find(x=>x.sku===open);if(!r){closeDr();return}
-  const o=OV[r.sku],dis=simulating(),proj=r.demand_rate?((r.stock+(r.on_order||0)+(r.recommended_qty||0))/r.demand_rate).toFixed(1):'–';
+  const o=OV[r.sku],dis=simulating(),recQ=r.rule_qty??r.recommended_qty??0,proj=r.demand_rate?((r.stock+(r.on_order||0)+(r.recommended_qty||0))/r.demand_rate).toFixed(1):'–';
   $('dr').innerHTML=`<div style="display:flex;justify-content:space-between;align-items:start"><div><h2>${esc(r.name.replace('Freshroots ',''))}</h2><span class="id mono">${r.sku}</span> · <span class="tag">${esc(r.distributor)}</span></div><button id="cl">Close</button></div>
   <div style="margin-top:8px">${badges(r)} <b>${ACT[r.status]}</b></div>
   <h3>Why</h3><ul>${r.reasons.map(x=>`<li>${esc(x)}</li>`).join('')||'<li>Within all thresholds.</li>'}</ul>
   ${r.weekly.length?`<h3>Last 12 weeks</h3>${spark(r.weekly.slice(-D.config.baseline_weeks),r.avg12)}<div class="tag">dashed = 12-wk avg (${r.avg12}) · shaded = last 4 wks (${r.recent4}, ${r.spike_pct>0?'+':''}${r.spike_pct}%)</div>`:''}
   <h3>Reorder preview</h3><div class="cmp"><div><span>Now</span><b class="num">${r.weeks_cover??'–'} wks</b><span class="num">${r.stock??'–'} units${r.on_order?` + ${r.on_order} on order`:''}</span></div>
   <div><span>After recommended order</span><b class="num">${proj} wks</b><span class="num">+${r.recommended_qty||0} units · safe ${r.min_weeks}–${r.max_weeks}</span></div></div>
+  <h3>Forecast diff: system vs planner</h3>
+  <div class="split"><div><h4>System baseline rules</h4><b class="num">${recQ} units</b><div class="tag">12-wk avg ${r.avg12} · last 4 wks ${r.recent4} (${r.spike_pct>0?'+':''}${r.spike_pct}%)${D.festival?' · festival ×1.25':''} → ${r.demand_rate}/wk</div></div>
+  <div><h4>Planner override</h4><b class="num" id="dq">${o?.decision==='overridden'?esc(o.final_qty)+' units':'–'}</b> <span id="dchip"></span><div class="tag">Raghav's judgment, with a required reason tag</div></div></div>
   <h3>Planner decision (the 15–20% judgment)</h3>
   ${dis?'<div class="banner">Reset the simulation to record decisions.</div>':''}
   <button class="p" id="acc" ${dis||r.status==='OK'?'disabled':''}>Accept recommendation</button>
@@ -190,17 +219,20 @@ function drawer(){
   $('dr').classList.add('on');$('ov').classList.add('on');
   $('cl').onclick=closeDr;
   document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{tag=tag===c.dataset.t?'':c.dataset.t;drawer()});
+  const chip=()=>{const v=parseInt($('fq').value,10);if(isNaN(v)){$('dchip').innerHTML='';return}const d=v-recQ;$('dq').textContent=v+' units';
+    $('dchip').innerHTML=d===0?'<span class="badge b-info">no change</span>':`<span class="badge ${d>0?'b-ok':'b-bad'}">${d>0?'+':'−'}${Math.abs(d)} units</span>`};
+  $('fq').oninput=chip;chip();
   if($('acc'))$('acc').onclick=()=>save(r,'accepted');$('ovr').onclick=()=>save(r,'overridden');
   if($('clr'))$('clr').onclick=async()=>{await fetch(`/api/overrides?as_of=${D.as_of}&sku=${r.sku}`,{method:'DELETE'});delete OV[r.sku];msg=ok='';render()};
   if($('po'))$('po').onclick=()=>draftPo(r.sku,o.final_qty);
 }
-function closeDr(){open=null;$('dr').classList.remove('on');$('dr2').classList.remove('on');$('ov').classList.remove('on')}
+function closeDr(){open=null;$('dr').classList.remove('on');$('dr2').classList.remove('on');$('ov').classList.remove('on');$('help').classList.remove('on')}
 $('ov').onclick=closeDr;document.addEventListener('keydown',e=>{if(e.key==='Escape')closeDr()});
 async function post(body){const res=await fetch('/api/overrides',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});return[res.ok,await res.json()]}
 async function refreshOv(){OV={};(await (await fetch('/api/overrides?as_of='+D.as_of)).json()).forEach(x=>OV[x.sku]=x)}
 async function save(r,decision){
   const b={as_of:D.as_of,sku:r.sku,decision,rec_status:r.status,rec_qty:r.rule_qty??r.recommended_qty??0};
-  if(decision==='overridden'){b.final_qty=$('fq').value;b.reason=$('rs').value;b.tag=tag}
+  if(decision==='overridden'){if(!tag){msg='Pick a reason tag (required for overrides).';ok='';drawer();return}b.final_qty=$('fq').value;b.reason=$('rs').value;b.tag=tag}
   const[okk,j]=await post(b);msg=okk?'':(j.error||'Save failed');ok=okk?'Saved.':'';if(okk)await refreshOv();render();
 }
 async function draftPo(sku,qty){
@@ -235,11 +267,15 @@ $('reset').onclick=()=>{adj=0;$('adj').value=0;fest=D?D.calendar_festival:null;l
 // ---- mid-week anomaly ticker + hold drawer
 function ticker(){
   const a=D.anomalies,reg=a.regions[0],el=$('ticker');
-  if(!reg){el.innerHTML=`<div class="tick ok">No regional demand shift beyond ±${a.threshold_pct}% vs the 4-week average. <button id="simShift">Simulate a Maharashtra −22% shift</button></div>`;$('simShift').onclick=()=>{shift=true;load()};return}
+  if(!reg){el.innerHTML=`<div class="tick ok">No regional demand shift beyond ±${a.threshold_pct}% vs the 4-week average. <button id="simShift">Simulate a Maharashtra −22% shift</button></div>`;$('simShift').onclick=()=>{scen='shift';load()};return}
   const aff=D.open_pos.filter(p=>reg.skus.includes(p.sku));
+  const tk=reg.region+reg.change_pct+a.simulated;
+  if(tk!==lastTK){lastTK=tk;const z=D.sources.open_orders==='zoho';
+    const t=toast(`<button class="x" aria-label="Dismiss">×</button><b>Mid-week anomaly:</b> ${esc(reg.region)} order volume ${reg.change_pct}% vs 4-week average${a.simulated?' (simulated)':''}. ${aff.length} open PO${aff.length===1?'':'s'} ${z?'pending in Zoho'+(D.zoho&&D.zoho.mode==='demo'?' (demo sandbox)':''):'open'}.${aff.length?'<div class="ta"><button class="p pz">Pause Order</button></div>':''}`,{ttl:0});
+    t.querySelector('.x').onclick=()=>t.remove();const pz=t.querySelector('.pz');if(pz)pz.onclick=()=>startPause(t,aff,reg.region)}
   el.innerHTML=`<div class="tick warn"><span><b>Alert:</b> demand shift detected in ${esc(reg.region)} region (${reg.change_pct}% order volume vs 4-week average)${a.simulated?' <span class="badge b-info">SIMULATED</span>':''}. ${aff.length} open PO${aff.length===1?'':'s'} affected.</span>${aff.length?'<button class="p" id="holdBtn">Review &amp; Hold Purchase Order</button>':''}${a.simulated?'<button id="simOff">End simulation</button>':''}</div>`;
   if($('holdBtn'))$('holdBtn').onclick=()=>holdDrawer(reg,aff);
-  if($('simOff'))$('simOff').onclick=()=>{shift=false;load()};
+  if($('simOff'))$('simOff').onclick=()=>{scen='';load()};
 }
 function panel(html){$('dr2').innerHTML=html;$('dr2').classList.add('on');$('ov').classList.add('on');$('dr').classList.remove('on');if($('cl2'))$('cl2').onclick=closeDr}
 async function holdDrawer(reg,aff){
@@ -320,6 +356,106 @@ function burnUi(){
   ${sa?`<circle cx="${x(sa)}" cy="${y(0)}" r="5" style="fill:var(--bad)"/>`:''}</svg>
   <div class="tag"><span style="color:var(--bad)">■</span> below ${lo} wks (stockout risk) · <span style="color:var(--brand)">■</span> ${lo}–${hi} wks (safe) · <span style="color:var(--warn)">■</span> above ${hi} wks (overstock) · dashed = no new order · solid = recommended ${rec} units arriving week ${lead}${on?` · ${on} units on order assumed week 1`:''}</div>
   <div style="margin-top:6px">${sa?`Without a new order this SKU runs out in <b>week ${sa}</b>.`:'No stockout within 8 weeks without a new order.'} ${rec?(sb?`Even with the recommended order it runs out in <b>week ${sb}</b>: a ${lead}-week lead time is too slow.`:'With the recommended order it stays in stock.'):''}</div>`;
+}
+
+// ---- toasts + pause with 10 s undo
+function toast(html,{ttl=6000}={}){const el=document.createElement('div');el.className='toast';el.innerHTML=html;$('toasts').appendChild(el);if(ttl)setTimeout(()=>el.remove(),ttl);return el}
+function startPause(el,aff,label){
+  el.innerHTML=`<div class="ta" style="margin:0"><svg class="ring" viewBox="0 0 34 34"><circle class="bg" cx="17" cy="17" r="14"/><circle class="fg" cx="17" cy="17" r="14"/></svg>
+  <div style="flex:1"><b>Pausing ${aff.length} PO${aff.length===1?'':'s'}</b> (${esc(label)})<div class="tag">Logging the hold in 10 s</div></div><button class="p" id="undo">UNDO</button></div>`;
+  requestAnimationFrame(()=>requestAnimationFrame(()=>el.querySelector('.fg').classList.add('go')));
+  const t=setTimeout(async()=>{
+    const res=await fetch('/api/holds',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pos:aff,reason:'Paused from control tower: '+label})});
+    el.innerHTML=res.ok?`<b>Locked.</b> Hold request logged for procurement (${aff.length} PO${aff.length===1?'':'s'}). The tool does not edit POs in Zoho.`:`<span class="err">Could not log the hold.</span>`;setTimeout(()=>el.remove(),6000);
+  },10000);
+  el.querySelector('#undo').onclick=()=>{clearTimeout(t);el.innerHTML='Pause cancelled. Nothing was logged.';setTimeout(()=>el.remove(),2500)};
+}
+
+// ---- keyboard: focus, approve, edit, pause, help
+const rowsEl=()=>[...document.querySelectorAll('#tb tr.row')];
+function setFx(i){const rs=rowsEl();if(!rs.length)return;fx=Math.max(0,Math.min(rs.length-1,i));rs.forEach((r,j)=>r.classList.toggle('fx',j===fx));rs[fx].scrollIntoView({block:'nearest'})}
+const fxSku=()=>{const r=rowsEl()[fx];return r&&r.querySelector('[data-r]').dataset.r};
+async function approve(){
+  const s=fxSku(),r=s&&D.results.find(x=>x.sku===s);if(!r)return toast('Focus a row first (J / K).');
+  if(simulating())return toast('Reset the simulation before approving.');if(!actionable(r))return toast(`${esc(r.name.replace('Freshroots ',''))}: no reorder to approve.`);
+  const[okk,j]=await post({as_of:D.as_of,sku:r.sku,decision:'accepted',rec_status:r.status,rec_qty:r.recommended_qty});
+  if(okk){await refreshOv();render();toast(`Approved ${esc(r.name.replace('Freshroots ',''))}: ${r.recommended_qty} units.`)}else toast(esc(j.error||'Save failed'));
+}
+function edit(){const s=fxSku();if(!s)return toast('Focus a row first (J / K).');open=s;tag=OV[s]?.tag||'';msg=ok='';drawer();setTimeout(()=>$('fq')&&$('fq').focus(),50)}
+function pauseFocused(){
+  const s=fxSku();if(!s)return toast('Focus a row first (J / K).');
+  const aff=D.open_pos.filter(p=>p.sku===s);if(!aff.length)return toast(`No open PO for ${s} to pause.`);
+  const t=toast('',{ttl:0});startPause(t,aff,s);
+}
+function toggleHelp(){$('help').classList.toggle('on')}
+document.addEventListener('keydown',e=>{
+  if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){e.preventDefault();kOpen?closeK():openK();return}
+  if(e.key==='Escape'){closeK();return}
+  if(kOpen)return kKey(e);
+  if(!D||e.metaKey||e.ctrlKey||e.altKey||['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName))return;
+  const k=e.key.toLowerCase();
+  if(k==='j')setFx(fx+1);else if(k==='k')setFx(fx-1);else if(k==='a')approve();else if(k==='e')edit();else if(k==='p')pauseFocused();else if(e.key==='?')toggleHelp();
+});
+
+// ---- command menu
+let kOpen=false,kSel=0,kList=[];
+function cmds(){
+  const c=[],f=(l,fn)=>c.push({l,fn});
+  f('Show stockout risk SKUs',()=>{filter='STOCKOUT';render()});f('Show overstock risk SKUs',()=>{filter='OVERSTOCK';render()});
+  f('Show high-demand SKUs',()=>{filter='HIGH';render()});f('Show SKUs needing review',()=>{filter='REVIEW';render()});f('Clear filters',()=>{filter=null;render()});
+  f('Toggle festival mode (+25%)',()=>{fest=!fest;load()});
+  f('Export reorder proposals (CSV)',()=>$('csv').click());
+  f('Export POs to Zoho: stage draft POs for actionable SKUs',()=>{
+    if(simulating())return toast('Reset the simulation first.');if(!(D.zoho&&D.zoho.draft_enabled))return toast('Draft POs need a Zoho connection (or the demo sandbox).');
+    sel=new Set(D.results.filter(actionable).map(r=>r.sku));render();$('draft').click()});
+  f(scen==='shift'?'End the Maharashtra shift simulation':'Simulate a Maharashtra −22% shift',()=>{scen=scen==='shift'?'':'shift';load()});
+  f(scen==='churn'?'End the churn simulation':'Simulate churn: GrainPath −35%',()=>{scen=scen==='churn'?'':'churn';load()});
+  f('Send scheme alert…',()=>scheme(_d[0].id));f('Show keyboard shortcuts',()=>toggleHelp());
+  D.results.forEach(r=>f(`Open ${r.name.replace('Freshroots ','')} (${r.sku})`,()=>{open=r.sku;tag=OV[r.sku]?.tag||'';msg=ok='';drawer()}));
+  return c;
+}
+function openK(){kOpen=true;$('kov').classList.add('on');$('kin').value='';kSel=0;kRender();$('kin').focus()}
+function closeK(){kOpen=false;$('kov').classList.remove('on')}
+function kRender(){
+  const q=$('kin').value.toLowerCase().trim();kList=D?cmds().filter(c=>c.l.toLowerCase().includes(q)):[];kSel=Math.min(kSel,Math.max(0,kList.length-1));
+  $('kl').innerHTML=kList.map((c,i)=>`<li class="${i===kSel?'sel':''}" data-i="${i}">${esc(c.l)}</li>`).join('')||'<li class="none">No match</li>';
+  document.querySelectorAll('#kl li[data-i]').forEach(li=>{li.onclick=()=>{const c=kList[+li.dataset.i];closeK();c.fn()};li.onmouseenter=()=>{kSel=+li.dataset.i;document.querySelectorAll('#kl li').forEach(x=>x.classList.toggle('sel',x===li))}});
+  const s=document.querySelector('#kl li.sel');if(s)s.scrollIntoView({block:'nearest'});
+}
+function kKey(e){
+  if(e.key==='ArrowDown'&&kList.length){e.preventDefault();kSel=(kSel+1)%kList.length;kRender()}
+  else if(e.key==='ArrowUp'&&kList.length){e.preventDefault();kSel=(kSel-1+kList.length)%kList.length;kRender()}
+  else if(e.key==='Enter'){e.preventDefault();const c=kList[kSel];closeK();if(c)c.fn()}
+}
+$('kin').oninput=()=>{kSel=0;kRender()};$('kov').onclick=e=>{if(e.target.id==='kov')closeK()};$('help').onclick=e=>{if(e.target.id==='help')toggleHelp()};$('kbtn').onclick=openK;
+
+// ---- distributor network (schematic) + churn
+function net(){
+  const A=D.anomalies,ds=A.distributors,box={Gujarat:[20,12,330,100],Maharashtra:[300,120,400,100],Karnataka:[120,228,330,100]};
+  const regs=[...new Set(ds.map(d=>d.region))],extra=regs.filter(r=>!box[r]);extra.forEach((r,i)=>box[r]=[20+i*40,336+i*10,330,100]);
+  const col=d=>d.churn_risk?'var(--bad)':d.change_pct<=-10?'var(--warn)':'var(--brand)';
+  const H=340+extra.length*110;let g='';
+  regs.forEach(r=>{const[x,y,w,h]=box[r];g+=`<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="14" style="fill:var(--bg);stroke:var(--inset)"/><text x="${x+12}" y="${y+18}" font-size="11" style="fill:var(--mute)" font-weight="700">${esc(r.toUpperCase())}</text>`;
+    const m=ds.filter(d=>d.region===r);m.forEach((d,i)=>{const cx=x+w*(i+1)/(m.length+1),cy=y+58;
+      g+=`<g class="node" data-n="${d.distributor_id}" tabindex="0" role="button" aria-label="${esc(d.name)}">${d.churn_risk?`<circle class="pr" cx="${cx}" cy="${cy}" r="16" style="fill:var(--bad)"/>`:''}<circle class="c" cx="${cx}" cy="${cy}" r="16" style="fill:${col(d)}"/>
+      <text x="${cx}" y="${cy+4}" text-anchor="middle" font-size="10" font-weight="700" style="fill:#04130d" class="mono">${d.change_pct>0?'+':''}${Math.round(d.change_pct)}%</text>
+      <text x="${cx}" y="${cy+34}" text-anchor="middle" font-size="11" style="fill:var(--ink)">${esc(d.name)}</text></g>`})});
+  $('net').innerHTML=`<svg viewBox="0 0 720 ${H}" style="width:100%;height:auto" role="img" aria-label="Distributor health by region">${g}</svg>`;
+  document.querySelectorAll('.node').forEach(n=>{const go=()=>node(n.dataset.n);n.onclick=go;n.onkeydown=e=>{if(e.key==='Enter')go()}});
+  $('simChurn').style.display=scen==='churn'?'none':'';$('endChurn').style.display=scen==='churn'?'':'none';
+  $('simChurn').onclick=()=>{scen='churn';load()};$('endChurn').onclick=()=>{scen='';load()};
+  const risk=ds.filter(d=>d.churn_risk),key='churn'+risk.map(d=>d.distributor_id).join();
+  if(risk.length&&key!==window._ck){window._ck=key;risk.forEach(d=>{const t=toast(`<button class="x" aria-label="Dismiss">×</button><b>Churn risk:</b> ${esc(d.name)} order volume ${d.change_pct}% vs 4-week average${A.simulated?' (simulated)':''}.<div class="ta"><button class="p">Open distributor</button></div>`,{ttl:0});
+    t.querySelector('.x').onclick=()=>t.remove();t.querySelector('.p').onclick=()=>{t.remove();node(d.distributor_id)}})}
+}
+function node(id){
+  const d=D.anomalies.distributors.find(x=>x.distributor_id===id),rs=D.results.filter(r=>r.distributor_id===id);
+  panel(`<div style="display:flex;justify-content:space-between"><h2>${esc(d.name)}</h2><button id="cl2">Close</button></div><div class="tag"><span class="mono">${esc(d.distributor_id)}</span> · ${esc(d.region)}</div>
+  ${d.churn_risk?`<div class="banner" style="margin-top:10px">Churn risk: order volume ${d.change_pct}% vs the 4-week average${D.anomalies.simulated?' (simulated)':''}.</div>`:''}
+  <div class="cmp" style="margin-top:12px"><div><span>Order volume vs 4-wk avg</span><b class="num">${d.change_pct>0?'+':''}${d.change_pct}%</b></div><div><span>SKUs / stockout risk</span><b class="num">${rs.length} / ${rs.filter(r=>r.flags.includes('STOCKOUT_RISK')).length}</b></div></div>
+  <h3>SKUs</h3><ul>${rs.map(r=>`<li>${esc(r.name.replace('Freshroots ',''))} <span class="mono id">${r.sku}</span> · ${r.weeks_cover} wks</li>`).join('')}</ul>
+  <div style="margin-top:14px"><button class="p" id="bc">Broadcast WhatsApp Scheme Notification</button></div>`);
+  $('bc').onclick=()=>scheme(id);
 }
 
 load();
