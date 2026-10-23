@@ -10,8 +10,11 @@ class Dev(SimpleHTTPRequestHandler):
         try: mod = importlib.import_module(f"api.{name}")
         except ImportError: return self.send_error(404)
         import types
-        for k, v in vars(mod.handler).items():          # borrow the handler's methods (incl. helpers like _send)
-            if isinstance(v, types.FunctionType) and not k.startswith("__"): setattr(self, k, types.MethodType(v, self))
+        from http.server import BaseHTTPRequestHandler
+        for cls in reversed(mod.handler.__mro__):         # borrow the handler's methods, including inherited helpers like _send
+            if cls in (object, BaseHTTPRequestHandler) or not issubclass(cls, BaseHTTPRequestHandler): continue
+            for k, v in vars(cls).items():
+                if isinstance(v, types.FunctionType) and not k.startswith("__"): setattr(self, k, types.MethodType(v, self))
         getattr(self, verb)()
     def do_GET(self):
         self._api("do_GET") if self.path.startswith("/api/") else super().do_GET()

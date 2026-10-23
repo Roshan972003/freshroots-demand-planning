@@ -11,6 +11,12 @@
     },
     "api/holds.py": {
       "includeFiles": "api/_store.py"
+    },
+    "api/rules.py": {
+      "includeFiles": "api/_store.py"
+    },
+    "api/settings.py": {
+      "includeFiles": "api/_store.py"
     }
   }
 }

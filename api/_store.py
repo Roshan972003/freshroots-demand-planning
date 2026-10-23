@@ -113,3 +113,38 @@ def list_holds():
     rows = _run2(HOLD_SCHEMA, "SELECT po, sku, qty, reason, requested_at::text FROM po_holds ORDER BY requested_at DESC LIMIT 50",
                  "SELECT po, sku, qty, reason, requested_at FROM po_holds ORDER BY requested_at DESC LIMIT 50", fetch=True)
     return [dict(zip(("po", "sku", "qty", "reason", "requested_at"), r)) for r in rows]
+
+
+# --- temporary planner rules (30 days) and small shared settings -----------------------------------------------
+RULE_SCHEMA = """CREATE TABLE IF NOT EXISTS planner_rules (
+    sku TEXT PRIMARY KEY, ratio REAL NOT NULL, tag TEXT, reason TEXT, created_at TEXT NOT NULL, expires_at TEXT NOT NULL)"""
+SET_SCHEMA = "CREATE TABLE IF NOT EXISTS app_settings (k TEXT PRIMARY KEY, v TEXT)"
+
+def _now():
+    import datetime
+    return datetime.datetime.utcnow()
+
+def save_rule(sku, ratio, tag, reason, days=30):
+    import datetime
+    a, b = _now(), _now() + datetime.timedelta(days=days)
+    f = "%Y-%m-%d %H:%M:%S"
+    _run2(RULE_SCHEMA, "INSERT INTO planner_rules (sku,ratio,tag,reason,created_at,expires_at) VALUES (%s,%s,%s,%s,%s,%s) ON CONFLICT (sku) DO UPDATE SET ratio=EXCLUDED.ratio, tag=EXCLUDED.tag, reason=EXCLUDED.reason, created_at=EXCLUDED.created_at, expires_at=EXCLUDED.expires_at",
+          "INSERT OR REPLACE INTO planner_rules (sku,ratio,tag,reason,created_at,expires_at) VALUES (?,?,?,?,?,?)",
+          (sku, float(ratio), tag, reason, a.strftime(f), b.strftime(f)))
+
+def list_rules():
+    now = _now().strftime("%Y-%m-%d %H:%M:%S")
+    rows = _run2(RULE_SCHEMA, "SELECT sku,ratio,tag,reason,created_at,expires_at FROM planner_rules WHERE expires_at > %s",
+                 "SELECT sku,ratio,tag,reason,created_at,expires_at FROM planner_rules WHERE expires_at > ?", (now,), fetch=True)
+    return {r[0]: dict(ratio=r[1], tag=r[2] or "", reason=r[3] or "", created_at=r[4], expires_at=r[5]) for r in rows}
+
+def delete_rule(sku):
+    _run2(RULE_SCHEMA, "DELETE FROM planner_rules WHERE sku=%s", "DELETE FROM planner_rules WHERE sku=?", (sku,))
+
+def get_settings():
+    rows = _run2(SET_SCHEMA, "SELECT k, v FROM app_settings", "SELECT k, v FROM app_settings", fetch=True)
+    return {k: v for k, v in rows}
+
+def set_setting(k, v):
+    _run2(SET_SCHEMA, "INSERT INTO app_settings (k, v) VALUES (%s,%s) ON CONFLICT (k) DO UPDATE SET v=EXCLUDED.v",
+          "INSERT OR REPLACE INTO app_settings (k, v) VALUES (?,?)", (k, v))

@@ -115,7 +115,7 @@ def find_anomalies(series, skus, dists, threshold=0.20, simulate=None, churn_thr
     return dict(threshold_pct=threshold * 100, churn_threshold_pct=churn_threshold * 100, simulated=bool(simulate),
                 simulation=simulate[1] if simulate else None, regions=regions, distributors=dist_list)
 
-def run(data_dir="data", month=None, cfg=CONFIG, open_po=None, stock=None, today=None, festival=None, demand_adj=0.0, open_po_detail=None, simulate_shift=False, simulate_churn=False):
+def run(data_dir="data", month=None, cfg=CONFIG, open_po=None, stock=None, today=None, festival=None, demand_adj=0.0, open_po_detail=None, simulate_shift=False, simulate_churn=False, sku_adj=None, rules=None):
     sales = read(f"{data_dir}/weekly_sales.csv")
     skus = {r["SKU_ID"]: r for r in read(f"{data_dir}/sku_master.csv")}
     dists = {r["Distributor_ID"]: r for r in read(f"{data_dir}/distributor_master.csv")}
@@ -168,11 +168,15 @@ def run(data_dir="data", month=None, cfg=CONFIG, open_po=None, stock=None, today
                 demand_rate=None, weeks_cover=None, min_weeks=None, max_weeks=None, weekly=[]))
             continue
 
-        d_ = decide(s, vals, int(inv_row["Units_On_Hand"]), is_fest, cfg, open_po.get(sid, 0), demand_adj)
+        d_ = decide(s, vals, int(inv_row["Units_On_Hand"]), is_fest, cfg, open_po.get(sid, 0), demand_adj + (sku_adj or {}).get(sid, 0.0))
         flags, reasons, status, action, qty = d_["flags"], d_["reasons"], d_["status"], d_["action"], d_["qty"]
         avg12, recent4, spike, rate, cover = d_["avg12"], d_["recent4"], d_["spike"], d_["rate"], d_["cover"]
         lo, hi, std, stock, perish = d_["lo"], d_["hi"], d_["std"], d_["stock"], d_["perish"]
         review += d_["review"]
+        rule = (rules or {}).get(sid)
+        if rule and qty and status in ("REORDER_NOW", "REORDER"):     # temporary planner rule, e.g. from an override
+            qty = max(0, round(qty * rule["ratio"]))
+            reasons.append(f"Temporary planner rule ({rule['tag'] or 'no tag'}, until {rule['expires_at'][:10]}): quantity x{rule['ratio']:.2f}")
 
         age = (max_date(as_of) - max_date(inv_row["As_Of_Date"])).days
         if age > cfg["max_inventory_age_days"]: review.append(f"Inventory {age} days stale")
@@ -184,7 +188,7 @@ def run(data_dir="data", month=None, cfg=CONFIG, open_po=None, stock=None, today
             distributor=d["Distributor_Name"] if d else s["Distributor_ID"], distributor_id=s["Distributor_ID"],
             region=d["Region"] if d else "Unknown", status=status, action=action,
             flags=flags, reasons=reasons, recommended_qty=qty if status != "REVIEW" else 0,
-            rule_qty=qty, stock=stock, on_order=d_["on_order"], avg12=round(avg12, 1), recent4=round(recent4, 1), spike_pct=round(spike*100, 1),
+            rule_qty=qty, planner_rule=rule, stock=stock, on_order=d_["on_order"], avg12=round(avg12, 1), recent4=round(recent4, 1), spike_pct=round(spike*100, 1),
             demand_rate=round(rate, 1), weeks_cover=round(cover, 1), min_weeks=lo, max_weeks=hi,
             std_qty=std, weekly=list(zip(weeks, vals))))
     order = {"REORDER_NOW": 0, "REVIEW": 1, "REORDER": 2, "PAUSE_ORDER": 3, "OK": 4}

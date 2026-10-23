@@ -5,7 +5,7 @@ from urllib.parse import urlparse, parse_qs
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import _store
 
-TAGS = ("Competitor scheme", "Distributor onboarding", "Unseasonal weather", "Trade promotion", "New launch", "Distributor anomaly", "Other")
+TAGS = ("New launch", "Unusual distributor behavior", "One-off market event", "Competitor scheme", "Distributor onboarding", "Unseasonal weather", "Trade promotion", "Distributor anomaly", "Live delta adjustment", "Other")
 
 class handler(BaseHTTPRequestHandler):
     def _send(self, code, obj):

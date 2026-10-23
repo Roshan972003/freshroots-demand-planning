@@ -61,6 +61,14 @@ kbd{font:600 11px "JetBrains Mono",monospace;padding:2px 6px;border-radius:5px;b
 .split{display:grid;grid-template-columns:1fr 1fr;gap:8px}.split>div{padding:10px;border-radius:10px;background:var(--bg)}.split h4{margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--mute)}.split b{font-size:20px}
 @keyframes pulse{0%{transform:scale(1);opacity:.85}100%{transform:scale(2.1);opacity:0}}
 .pr{transform-box:fill-box;transform-origin:center;animation:pulse 1.6s ease-out infinite}
+.mand{display:flex;flex-wrap:wrap;gap:18px;align-items:center;padding:10px 14px;margin-bottom:12px}.mand>div{flex:1;min-width:210px}.mand small{color:var(--mute);display:block;font-size:11px;text-transform:uppercase;letter-spacing:.06em}
+.prog{height:6px;background:var(--inset);border-radius:3px;margin-top:6px}.prog i{display:block;height:6px;border-radius:3px;background:var(--brand)}.mand button{padding:2px 8px;font-size:12px}
+.sumc{padding:14px;margin:12px 0;background:color-mix(in srgb,var(--brandbg) 55%,var(--panel));border-color:color-mix(in srgb,var(--brand) 35%,var(--inset))}.sumc ul{margin:6px 0 10px;padding-left:18px}
+.mt{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}.mt .card{padding:10px 12px}.mt b{display:block;font-size:20px}.mt span{color:var(--mute);font-size:12px}
+.cs{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}@media(max-width:760px){.cs{grid-template-columns:1fr}}
+.th{padding:10px 12px;border-bottom:1px solid var(--inset);cursor:pointer}.th:hover,.th.on{background:color-mix(in srgb,var(--brand) 9%,transparent)}.th:last-child{border-bottom:0}
+.steps{list-style:none;padding:0!important;margin:0}.steps li{display:flex;gap:10px;padding:8px 0;border-bottom:1px dashed var(--inset)}.steps li:last-child{border:0}
+.sn{flex:0 0 22px;height:22px;border-radius:50%;background:var(--inset);display:grid;place-items:center;font-size:11px;font-weight:700}.sn.ok{background:var(--brandbg);color:var(--brand)}.sn.no{background:var(--badbg);color:var(--bad)}
 .node{cursor:pointer}.node:hover circle.c{stroke:var(--ink);stroke-width:2}
 
 .tick{padding:10px 14px;border-radius:10px;margin-bottom:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;border:1px solid}
@@ -80,9 +88,13 @@ select,input[type=date]{font:inherit;padding:6px 9px;border-radius:8px;border:1p
   <div><h1>Freshroots Demand Planning Control Tower</h1><div class="sub" id="sub">Loading…</div></div>
   <div class="ctl"><button id="kbtn" title="Command menu"><kbd>⌘K</kbd> Commands</button><span class="sw" id="fest" role="switch" tabindex="0"><i></i><span id="festLabel">Festival uplift +25%</span></span></div>
 </header>
+<div class="card mand" id="mandate"></div>
 <div id="ticker"></div>
 
 <div class="kpis" id="kpis"></div>
+
+<details class="sec" open><summary style="cursor:pointer;font-weight:700;font-size:15px">Executive dashboard (12 metrics)</summary>
+<div class="card sumc" id="sumc"></div><div class="mt" id="mt"></div></details>
 
 <div class="card sim">
   <b>What-if</b>
@@ -106,6 +118,8 @@ select,input[type=date]{font:inherit;padding:6px 9px;border-radius:8px;border:1p
 <section class="sec"><h2>Distributors</h2><div class="card wrap"><table>
 <thead><tr><th>Distributor</th><th>Region</th><th class="n">SKUs</th><th class="n">Stockout risk</th><th></th></tr></thead><tbody id="dtb"></tbody></table></div></section>
 
+<section class="sec"><h2>WhatsApp CS queue &amp; SLA <span class="badge b-info">SAMPLE THREADS</span></h2><div class="cs" id="cs"></div></section>
+
 <section class="sec"><h2>Distributor network &amp; churn risk</h2><div class="card">
 <div class="bar"><button id="simChurn">Simulate churn: GrainPath −35%</button><button id="endChurn" style="display:none">End simulation</button>
 <span class="tag"><span style="color:var(--brand)">●</span> healthy · <span style="color:var(--warn)">●</span> order volume down 10–30% · <span style="color:var(--bad)">●</span> pulsing: churn risk (down 30%+). Schematic by region, not to scale: the data has no city locations.</span></div>
@@ -121,6 +135,7 @@ select,input[type=date]{font:inherit;padding:6px 9px;border-radius:8px;border:1p
 
 <div class="ov" id="ov"></div>
 <div id="toasts" aria-live="polite"></div>
+<div class="kov" id="modal"><div class="kbox" id="mbox" style="padding:16px;max-width:680px"></div></div>
 <div class="kov" id="kov"><div class="kbox"><input id="kin" placeholder="Type a command or SKU…  (↑ ↓ Enter, Esc)" autocomplete="off"><ul id="kl"></ul></div></div>
 <div class="kov" id="help"><div class="kbox" style="padding:16px"><b>Keyboard shortcuts</b><table style="margin-top:8px">
 <tr><td><kbd>⌘/Ctrl K</kbd></td><td>Command menu</td></tr><tr><td><kbd>J</kbd> / <kbd>K</kbd></td><td>Next / previous SKU row</td></tr>
@@ -133,7 +148,8 @@ select,input[type=date]{font:inherit;padding:6px 9px;border-radius:8px;border:1p
 let D=null,OV={},filter=null,open=null,sel=new Set(),tag='',msg='',ok='',fest=null,adj=0,scen='',fx=-1,lastTK='',burnSku=null,lead=2,SC={name:'',expiry:'',sku:'',ds:new Set()};
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const TAGS=["Competitor scheme","Distributor onboarding","Unseasonal weather","Trade promotion","New launch","Distributor anomaly","Other"];
+const TAGS=["New launch","Unusual distributor behavior","One-off market event","Competitor scheme","Distributor onboarding","Unseasonal weather","Trade promotion","Distributor anomaly","Other"];
+let ST={},CS=null,csSel=null,TWO=false;
 const ACT={REORDER_NOW:'Immediate reorder',REORDER:'1.5x standard order',PAUSE_ORDER:'Pause order',OK:'Maintain baseline',REVIEW:'Human review'};
 const simulating=()=>adj!==0||(D&&fest!==null&&fest!==D.calendar_festival);
 
@@ -143,6 +159,7 @@ async function load(){
     D=await (await fetch('/api/recommendations?'+q)).json();if(D.error)throw new Error(D.error);
     if(fest===null)fest=D.festival;
     OV={};(await (await fetch('/api/overrides?as_of='+D.as_of)).json()).forEach(x=>OV[x.sku]=x);
+    try{ST=await (await fetch('/api/settings')).json();if(!CS)CS=await (await fetch('/cs_sample.json')).json()}catch(e){}
   }catch(e){$('sub').textContent='Could not load: '+e.message;return}
   render();
 }
@@ -162,7 +179,7 @@ const actionable=r=>r.status==='REORDER_NOW'||r.status==='REORDER';
 function render(){
   const R=D.results,c=s=>R.filter(r=>r.status===s).length;
   const so=R.filter(r=>r.flags.includes('STOCKOUT_RISK')).length,ovr=R.filter(r=>r.flags.includes('OVERSTOCK_RISK')).length,hd=R.filter(r=>r.flags.includes('HIGH_DEMAND')).length;
-  const ds=Object.values(OV),ovn=ds.filter(x=>x.decision==='overridden').length;
+  const ds=Object.values(OV).filter(x=>x.tag!=='Live delta adjustment'),ovn=ds.filter(x=>x.decision==='overridden').length;
   const z=D.sources.open_orders==='zoho'||D.sources.stock==='zoho'?` · Zoho${D.zoho&&D.zoho.mode==='demo'?' DEMO SANDBOX (simulated)':''}`:'';
   $('sub').textContent=`Inventory as of ${D.as_of} · month ${D.month} · ${R.length} SKUs · stock: ${D.sources.stock} · open POs: ${D.sources.open_orders}${z}${D.zoho&&D.zoho.error?' · WARNING Zoho unavailable, using CSV ('+D.zoho.error+')':''}`;
   $('fest').classList.toggle('on',!!fest);$('festLabel').textContent=`Festival uplift +25%${D.calendar_festival?' (calendar: on)':' (calendar: off)'}`;
@@ -178,12 +195,12 @@ function render(){
     return `<tr class="row"><td><input type="checkbox" data-s="${r.sku}" ${sel.has(r.sku)?'checked':''} ${actionable(r)&&!simulating()?'':'disabled'}></td>
     <td><b>${esc(r.name.replace('Freshroots ',''))}</b><br><span class="id mono">${r.sku}</span> <span class="tag">${esc(r.category)}${r.perishability==='High'?' · <b>perishable</b>':''}</span></td>
     <td class="n num">${r.stock??'–'}</td><td class="n num">${r.weeks_cover??'–'}</td><td>${r.spike_pct==null?'–':trend(r.spike_pct)}</td>
-    <td>${badges(r)}</td><td>${ACT[r.status]}${o?`<br><span class="tag">${o.decision==='accepted'?'✓ accepted':'✎ overridden → '+esc(o.final_qty)+(o.tag?' · '+esc(o.tag):'')}</span>`:''}</td>
+    <td>${badges(r)}</td><td>${ACT[r.status]}${r.planner_rule?' <span class="badge b-info">30-DAY RULE</span>':''}${o?`<br><span class="tag">${o.decision==='accepted'?'✓ accepted':'✎ overridden → '+esc(o.final_qty)+(o.tag?' · '+esc(o.tag):'')}</span>`:''}</td>
     <td class="n num">${r.recommended_qty||'–'}</td><td><button data-r="${r.sku}">Review</button></td></tr>`}).join('');
   document.querySelectorAll('[data-r]').forEach(b=>b.onclick=()=>{open=b.dataset.r;tag=OV[open]?.tag||'';msg=ok='';drawer()});
   document.querySelectorAll('input[data-s]').forEach(b=>b.onchange=()=>{b.checked?sel.add(b.dataset.s):sel.delete(b.dataset.s);bar()});
   const g=D.config;$('rules').textContent=`Rules (Raghav): spike >${g.spike_threshold*100}% over 12-wk avg → reorder ${g.high_demand_multiplier}x · cover <${g.stockout_weeks} wks → reorder now · >${g.overstock_weeks} wks → pause · perishable ${g.perishable_min_weeks}–${g.perishable_max_weeks} wks · festival months +${g.festival_uplift*100}% demand. Anything outside the rules goes to review.`;
-  bar();ticker();dists();net();burnUi();if(fx>=0)setFx(fx);if(open)drawer();
+  bar();mandate();exec();csq();ticker();dists();net();burnUi();if(fx>=0)setFx(fx);if(open)drawer();
 }
 function bar(){
   const n=[...sel].filter(s=>D.results.find(r=>r.sku===s&&actionable(r))).length,canDraft=D.zoho&&D.zoho.draft_enabled;
@@ -202,6 +219,8 @@ function drawer(){
   <div style="margin-top:8px">${badges(r)} <b>${ACT[r.status]}</b></div>
   <h3>Why</h3><ul>${r.reasons.map(x=>`<li>${esc(x)}</li>`).join('')||'<li>Within all thresholds.</li>'}</ul>
   ${r.weekly.length?`<h3>Last 12 weeks</h3>${spark(r.weekly.slice(-D.config.baseline_weeks),r.avg12)}<div class="tag">dashed = 12-wk avg (${r.avg12}) · shaded = last 4 wks (${r.recent4}, ${r.spike_pct>0?'+':''}${r.spike_pct}%)</div>`:''}
+  <h3>${r.perishability==='High'?'Perishable rule inspector (3–4 wk window)':'Rule inspector'}</h3>${ruleTrace(r)}
+  ${r.planner_rule?`<div class="banner" style="margin-top:10px">30-day planner rule active (${esc(r.planner_rule.tag)}, until ${esc(r.planner_rule.expires_at.slice(0,10))}): quantity ×${r.planner_rule.ratio.toFixed(2)}. <button id="rmv">Remove rule</button></div>`:''}
   <h3>Reorder preview</h3><div class="cmp"><div><span>Now</span><b class="num">${r.weeks_cover??'–'} wks</b><span class="num">${r.stock??'–'} units${r.on_order?` + ${r.on_order} on order`:''}</span></div>
   <div><span>After recommended order</span><b class="num">${proj} wks</b><span class="num">+${r.recommended_qty||0} units · safe ${r.min_weeks}–${r.max_weeks}</span></div></div>
   <h3>Forecast diff: system vs planner</h3>
@@ -210,23 +229,21 @@ function drawer(){
   <h3>Planner decision (the 15–20% judgment)</h3>
   ${dis?'<div class="banner">Reset the simulation to record decisions.</div>':''}
   <button class="p" id="acc" ${dis||r.status==='OK'?'disabled':''}>Accept recommendation</button>
-  <div style="margin-top:12px" class="tag">Or override. Reason tag:</div>
-  <div class="chips">${TAGS.map(t=>`<span class="chip ${tag===t?'on':''}" data-t="${esc(t)}">${esc(t)}</span>`).join('')}</div>
+  <div style="margin-top:12px" class="tag">Or override (you will be asked for a reason tag):</div>
   <div class="cmp"><input id="fq" type="number" min="0" placeholder="Order qty" value="${o?.decision==='overridden'?esc(o.final_qty):''}"><input id="rs" type="text" maxlength="300" placeholder="Note (optional)" value="${esc(o?.reason||'')}"></div>
   <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap"><button id="ovr" ${dis?'disabled':''}>Override</button>${o?'<button id="clr">Clear decision</button>':''}
   ${D.zoho&&D.zoho.draft_enabled&&o&&o.final_qty>0?`<button id="po" ${dis?'disabled':''}>Create draft PO (${esc(o.final_qty)})</button>`:''}</div>
   ${msg?`<div class="err">${esc(msg)}</div>`:''}${ok?`<div class="okmsg">${esc(ok)}</div>`:''}`;
   $('dr').classList.add('on');$('ov').classList.add('on');
   $('cl').onclick=closeDr;
-  document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{tag=tag===c.dataset.t?'':c.dataset.t;drawer()});
   const chip=()=>{const v=parseInt($('fq').value,10);if(isNaN(v)){$('dchip').innerHTML='';return}const d=v-recQ;$('dq').textContent=v+' units';
     $('dchip').innerHTML=d===0?'<span class="badge b-info">no change</span>':`<span class="badge ${d>0?'b-ok':'b-bad'}">${d>0?'+':'−'}${Math.abs(d)} units</span>`};
   $('fq').oninput=chip;chip();
-  if($('acc'))$('acc').onclick=()=>save(r,'accepted');$('ovr').onclick=()=>save(r,'overridden');
+  if($('acc'))$('acc').onclick=()=>save(r,'accepted');$('ovr').onclick=()=>ruleModal(r);if($('acc2'))$('acc2').onclick=()=>save(r,'accepted');if($('rmv'))$('rmv').onclick=async()=>{await fetch('/api/rules?sku='+r.sku,{method:'DELETE'});load()};
   if($('clr'))$('clr').onclick=async()=>{await fetch(`/api/overrides?as_of=${D.as_of}&sku=${r.sku}`,{method:'DELETE'});delete OV[r.sku];msg=ok='';render()};
   if($('po'))$('po').onclick=()=>draftPo(r.sku,o.final_qty);
 }
-function closeDr(){open=null;$('dr').classList.remove('on');$('dr2').classList.remove('on');$('ov').classList.remove('on');$('help').classList.remove('on')}
+function closeDr(){open=null;$('dr').classList.remove('on');$('dr2').classList.remove('on');$('ov').classList.remove('on');$('help').classList.remove('on');closeModal()}
 $('ov').onclick=closeDr;document.addEventListener('keydown',e=>{if(e.key==='Escape')closeDr()});
 async function post(body){const res=await fetch('/api/overrides',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});return[res.ok,await res.json()]}
 async function refreshOv(){OV={};(await (await fetch('/api/overrides?as_of='+D.as_of)).json()).forEach(x=>OV[x.sku]=x)}
@@ -390,7 +407,7 @@ function pauseFocused(){
 function toggleHelp(){$('help').classList.toggle('on')}
 document.addEventListener('keydown',e=>{
   if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){e.preventDefault();kOpen?closeK():openK();return}
-  if(e.key==='Escape'){closeK();return}
+  if(e.key==='Escape'){closeK();closeModal();return}
   if(kOpen)return kKey(e);
   if(!D||e.metaKey||e.ctrlKey||e.altKey||['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName))return;
   const k=e.key.toLowerCase();
@@ -456,6 +473,148 @@ function node(id){
   <h3>SKUs</h3><ul>${rs.map(r=>`<li>${esc(r.name.replace('Freshroots ',''))} <span class="mono id">${r.sku}</span> · ${r.weeks_cover} wks</li>`).join('')}</ul>
   <div style="margin-top:14px"><button class="p" id="bc">Broadcast WhatsApp Scheme Notification</button></div>`);
   $('bc').onclick=()=>scheme(id);
+}
+
+// ---- rule inspector (step-by-step logic)
+function ruleTrace(r){
+  if(r.status==='REVIEW'&&r.avg12==null)return '<div class="tag">Not enough data to run the rules.</div>';
+  const g=D.config,spike=r.spike_pct>g.spike_threshold*100,fm=D.festival,adj=D.demand_adj||0;
+  const st=(n,cls,title,body)=>`<li><span class="sn ${cls}">${n}</span><div><b>${title}</b><div class="tag" style="font-size:12px">${body}</div></div></li>`;
+  const cov=r.weeks_cover,low=cov<r.min_weeks,high=cov>r.max_weeks;
+  return `<ul class="steps">
+  ${st(1,spike?'no':'ok','4-week avg vs 12-week avg',`Last 4 weeks ${r.recent4}/wk vs 12-week ${r.avg12}/wk = <b class="num">${r.spike_pct>0?'+':''}${r.spike_pct}%</b>. ${spike?`Above +${g.spike_threshold*100}%: high demand, reorder ×${g.high_demand_multiplier}.`:`Within +${g.spike_threshold*100}%: no spike.`}`)}
+  ${st(2,fm?'no':'ok','Festival uplift modifier',`${fm?`Festival month (${esc(D.month)}): demand rate ×${1+g.festival_uplift} = <b class="num">${r.demand_rate}/wk</b>.`:`${esc(D.month)} is not a festival month (Oct, Nov, Mar): no uplift. Demand rate ${r.demand_rate}/wk.`}${adj?` What-if ${adj>0?'+':''}${Math.round(adj*100)}% applied.`:''}`)}
+  ${st(3,low?'no':high?'no':'ok',r.perishability==='High'?'Perishability constraint (min 3 / max 4 wks)':`Stock window (min ${g.stockout_weeks} / max ${g.overstock_weeks} wks)`,`Cover = (${r.stock}${r.on_order?` + ${r.on_order} on order`:''}) ÷ ${r.demand_rate} = <b class="num">${cov} wks</b> vs ${r.min_weeks}–${r.max_weeks}. ${low?'Below the minimum: stockout risk.':high?'Above the maximum: overstock risk.':'Inside the window.'}`)}
+  ${st(4,r.status==='OK'?'ok':'no','Final recommendation',`<span class="badge ${r.status==='OK'?'b-ok':r.status==='PAUSE_ORDER'?'b-warn':r.status==='REVIEW'?'b-info':'b-bad'}">${ACT[r.status]}</span> ${r.recommended_qty?`<b class="num">${r.recommended_qty} units</b>`:''}${r.planner_rule?' (includes planner rule)':''}`)}
+  </ul>${actionable(r)?'<div style="margin-top:6px"><button class="p" id="acc2">Approve recommendation</button></div>':''}`;
+}
+
+// ---- Raghav judgment capture overlay
+function openModal(html){$('mbox').innerHTML=html;$('modal').classList.add('on')}
+function closeModal(){$('modal').classList.remove('on')}
+$('modal').onclick=e=>{if(e.target.id==='modal')closeModal()};
+function ruleModal(r){
+  const q=parseInt($('fq').value,10),recQ=r.rule_qty??r.recommended_qty??0;
+  if(isNaN(q)||q<0){msg='Enter an order quantity to override with.';ok='';drawer();return}
+  let t=tag,conv=false;const ratio=recQ>0?q/recQ:null,note=$('rs').value;
+  const draw=()=>{openModal(`<div style="display:flex;justify-content:space-between"><h2 style="margin:0">Capture your judgment</h2><button id="mc">Cancel</button></div>
+    <div class="tag" style="margin-top:4px">${esc(r.name.replace('Freshroots ',''))}: system ${recQ} → yours <b class="num">${q}</b> units</div>
+    <h3 style="font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--mute);margin:14px 0 6px">Reason tag (required)</h3>
+    <div class="chips">${TAGS.map(x=>`<span class="chip ${t===x?'on':''}" data-t="${esc(x)}">${esc(x)}</span>`).join('')}</div>
+    <label class="sw ${conv?'on':''}" id="cv" style="margin-top:12px" ${ratio==null?'title="Needs a non-zero system quantity"':''}><i></i><span>Convert this judgment call into a temporary 30-day rule</span></label>
+    <div class="tag" style="margin-top:4px">${ratio==null?'Not available: the system quantity is 0.':conv?`For 30 days this SKU's rule-based reorder quantity is scaled ×${ratio.toFixed(2)}. You can remove the rule any time.`:'Off: this applies to this decision only.'}</div>
+    <div style="margin-top:14px"><button class="p" id="ms">Save override</button></div><div class="err" id="me"></div>`);
+    $('mc').onclick=closeModal;
+    document.querySelectorAll('#mbox .chip').forEach(c=>c.onclick=()=>{t=t===c.dataset.t?'':c.dataset.t;draw()});
+    $('cv').onclick=()=>{if(ratio==null)return;conv=!conv;draw()};
+    $('ms').onclick=async()=>{
+      if(!t){$('me').textContent='Pick a reason tag.';return}
+      const[okk,j]=await post({as_of:D.as_of,sku:r.sku,decision:'overridden',rec_status:r.status,rec_qty:recQ,final_qty:q,reason:note,tag:t});
+      if(!okk){$('me').textContent=j.error||'Save failed';return}
+      if(conv){const res=await fetch('/api/rules',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sku:r.sku,ratio,tag:t,reason:note})});if(!res.ok){$('me').textContent=(await res.json()).error||'Rule failed';return}}
+      closeModal();tag=t;msg='';ok=conv?'Saved, and a 30-day rule is now active.':'Saved.';await load();
+    };
+  };draw();
+}
+
+// ---- pre-flight PO approval gate (Monday snapshot vs live delta)
+$('draft').onclick=async()=>{
+  const rows=[...sel].map(s=>D.results.find(r=>r.sku===s)).filter(r=>r&&actionable(r));if(!rows.length)return;
+  openModal('<b>Loading pre-flight check…</b>');
+  const q=scen?'&scenario='+scen:'';
+  let snap,live;try{[snap,live]=await Promise.all([fetch('/api/recommendations').then(r=>r.json()),fetch('/api/recommendations?live=1'+q).then(r=>r.json())])}catch(e){openModal('<div class="err">Could not load live data.</div>');return}
+  const S=Object.fromEntries(snap.results.map(r=>[r.sku,r])),L=Object.fromEntries(live.results.map(r=>[r.sku,r]));
+  const data=rows.map(r=>{const a=S[r.sku],b=L[r.sku],dr=a.demand_rate?(b.demand_rate/a.demand_rate-1)*100:0,lq=actionable(b)?b.recommended_qty:0;return{r,a,b,dr,lq,hot:Math.abs(dr)>10}});
+  const worst=Math.max(...data.map(d=>Math.abs(d.dr))),block=worst>10,simW=live.anomalies&&live.anomalies.simulated;
+  const demo=D.zoho&&D.zoho.mode==='demo';
+  openModal(`<div style="display:flex;justify-content:space-between"><h2 style="margin:0">Pre-flight check: ${rows.length} PO${rows.length===1?'':'s'}</h2><button id="mc">Cancel</button></div>
+  <div class="tag" style="margin:4px 0 10px">Monday snapshot (${esc(snap.as_of)} plan) vs live signals (latest mid-week regional shift)${simW?' <span class="badge b-info">SIMULATED SHIFT</span>':''}. There is no live SAP feed: the live side recomputes the rules with the mid-week shift.</div>
+  <div class="wrap"><table><thead><tr><th>SKU</th><th class="n">Monday qty</th><th class="n">Monday rate/wk</th><th class="n">Live rate/wk</th><th class="n">Δ demand</th><th class="n">Live qty</th></tr></thead><tbody>
+  ${data.map(d=>`<tr><td><b>${esc(d.r.name.replace('Freshroots ',''))}</b><br><span class="id mono">${d.r.sku}</span></td><td class="n num">${d.a.recommended_qty}</td><td class="n num">${d.a.demand_rate}</td>
+  <td class="n num" style="${d.hot&&d.dr<0?'color:var(--bad);font-weight:700':''}">${d.b.demand_rate}</td><td class="n num" style="${d.hot?(d.dr<0?'color:var(--bad);font-weight:700':'color:var(--warn);font-weight:700'):''}">${d.dr>0?'+':''}${d.dr.toFixed(1)}%</td>
+  <td class="n num" style="${d.lq!==d.a.recommended_qty?'color:var(--bad);font-weight:700':''}">${d.lq}</td></tr>`).join('')}</tbody></table></div>
+  ${block?`<div class="banner" style="margin-top:12px">Live demand differs from Monday's snapshot by up to ${worst.toFixed(0)}% (limit 10%). Single-click approval is blocked.</div>
+    <label style="display:flex;gap:8px;align-items:center;margin:8px 0"><input type="checkbox" id="rv"> I have reviewed the live delta</label>
+    <button class="p" id="go" disabled>Confirm adjusted order with Live Delta</button>`:`<div class="okmsg">Live data is within 10% of Monday's snapshot.</div><div style="margin-top:10px"><button class="p" id="go">Approve &amp; create draft POs</button></div>`}
+  <p class="tag">Drafts only${demo?', in the Zoho demo sandbox':''}: a person reviews and issues them in Zoho.</p><div id="gm"></div>`);
+  $('mc').onclick=closeModal;if($('rv'))$('rv').onchange=e=>{$('go').disabled=!e.target.checked};
+  $('go').onclick=async()=>{
+    $('go').disabled=true;let done=0;const fail=[];
+    for(const d of data){
+      const useLive=block,qty=useLive?d.lq:d.a.recommended_qty;if(!(qty>0)){fail.push(d.r.sku+': live data says no order needed');continue}
+      const adjusted=qty!==d.a.recommended_qty;
+      const[o1,j1]=OV[d.r.sku]?[true,{}]:await post(adjusted?{as_of:D.as_of,sku:d.r.sku,decision:'overridden',rec_status:d.r.status,rec_qty:d.a.recommended_qty,final_qty:qty,tag:'Live delta adjustment',reason:'Adjusted to live mid-week delta'}:{as_of:D.as_of,sku:d.r.sku,decision:'accepted',rec_status:d.r.status,rec_qty:d.a.recommended_qty});
+      if(!o1){fail.push(d.r.sku+': '+j1.error);continue}
+      const res=await fetch('/api/zoho_po',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sku:d.r.sku,qty:OV[d.r.sku]?OV[d.r.sku].final_qty:qty,as_of:D.as_of})});
+      res.ok?done++:fail.push(d.r.sku+': '+((await res.json()).error||'failed'));
+    }
+    sel.clear();$('gm').innerHTML=`<div class="${fail.length?'err':'okmsg'}">${done} draft PO(s) created${fail.length?'. Skipped/failed: '+esc(fail.join('; ')):'.'}</div>`;await refreshOv();render();setTimeout(closeModal,fail.length?6000:1800);
+  };
+};
+
+// ---- executive dashboard
+function execStats(){
+  const R=D.results,c=f=>R.filter(f).length,wk=R.filter(r=>r.weekly&&r.weekly.length>=5);
+  const tot=i=>wk.reduce((a,r)=>a+r.weekly[r.weekly.length-1-i][1],0),last=tot(0),base=(tot(1)+tot(2)+tot(3)+tot(4))/4,wl=wk[0]?wk[0].weekly[wk[0].weekly.length-1][0]:'';
+  const so=R.filter(r=>r.flags.includes('STOCKOUT_RISK')),ov=R.filter(r=>r.flags.includes('OVERSTOCK_RISK')),hd=R.filter(r=>r.flags.includes('HIGH_DEMAND'));
+  const nm=a=>a.slice(0,3).map(r=>r.name.replace('Freshroots ','')).join(', ')+(a.length>3?` +${a.length-3} more`:'');
+  const covs=R.filter(r=>r.weeks_cover!=null).map(r=>r.weeks_cover),A=D.anomalies;
+  const ds=Object.values(OV).filter(x=>x.tag!=='Live delta adjustment'),ovn=ds.filter(x=>x.decision==='overridden').length;
+  const sp=base?(last/base-1)*100:0;
+  return{R,wl,last,sp,so,ov,hd,nm,A,m:[
+    ['Sales volume ('+(wl||'latest wk')+')',Math.round(last).toLocaleString('en-IN')+' units',(sp>0?'+':'')+sp.toFixed(1)+'% vs 4-wk avg'],
+    ['Stockout-risk SKUs',so.length,so.length?nm(so):'none'],['Overstock-risk SKUs',ov.length,ov.length?nm(ov):'none'],['High-demand SKUs',hd.length,hd.length?nm(hd):'none'],
+    ['Perishable SKUs at risk',so.filter(r=>r.perishability==='High').length,'3–4 wk window'],['Units on order (open POs)',D.open_pos.reduce((a,p)=>a+p.qty,0),D.open_pos.length+' PO line(s)'],
+    ['Avg weeks of cover',covs.length?(covs.reduce((a,b)=>a+b,0)/covs.length).toFixed(1):'–','across '+covs.length+' SKUs'],['Reorder units recommended',R.reduce((a,r)=>a+(actionable(r)?r.recommended_qty:0),0),c(actionable)+' SKU(s)'],
+    ['Override rate',ds.length?Math.round(ovn/ds.length*100)+'%':'–',ovn+' of '+ds.length+' decided'],['Regions with demand shift',A.regions.length,A.regions.map(r=>r.region+' '+r.change_pct+'%').join(', ')||'none beyond ±'+A.threshold_pct+'%'],
+    ['Churn-risk distributors',A.distributors.filter(d=>d.churn_risk).length,'down '+A.churn_threshold_pct+'%+ vs 4-wk avg'],['Needs review',c(r=>r.status==='REVIEW'),'outside the rules']]};
+}
+function bullets(e){
+  const b=[`Demand: ${Math.round(e.last).toLocaleString('en-IN')} units sold in ${e.wl||'the latest week'} (${e.sp>0?'+':''}${e.sp.toFixed(1)}% vs the 4-week average)${e.hd.length?`; ${e.hd.length} SKU${e.hd.length===1?'':'s'} running more than 20% above their 12-week average (${e.nm(e.hd)})`:''}.`,
+    `Stock: ${e.so.length} SKU${e.so.length===1?'':'s'} at stockout risk${e.so.length?` (${e.nm(e.so)})`:''}; ${e.ov.length} at overstock risk${e.ov.length?` (${e.nm(e.ov)})`:''}.`];
+  const ch=e.A.distributors.filter(d=>d.churn_risk);
+  b.push(e.A.regions.length||ch.length?`Signals: ${[...e.A.regions.map(r=>`${r.region} order volume ${r.change_pct}% vs the 4-week average`),...ch.map(d=>`${d.name} down ${Math.abs(d.change_pct)}% (churn risk)`)].join('; ')}${e.A.simulated?' (simulated)':''}.`:`Signals: no regional demand shift or distributor drop beyond the thresholds this week.`);
+  return b;
+}
+function exec(){
+  const e=execStats(),b=bullets(e);
+  $('sumc').innerHTML=`<b>Executive summary</b> <span class="tag">auto-generated from the data by rules, not an LLM</span><ul>${b.map(x=>`<li>${esc(x)}</li>`).join('')}</ul><button class="p" id="ceo">Download CEO weekly report</button> <span class="tag">Emailing needs an email integration, which is not connected.</span>`;
+  $('mt').innerHTML=e.m.map(([l,v,s])=>`<div class="card"><span>${esc(l)}</span><b class="num">${esc(v)}</b><span>${esc(s)}</span></div>`).join('')+`<div class="tag" style="grid-column:1/-1">The case's other metrics (fulfilment rate, overstock value, distributor complaints) need SAP and WhatsApp data that this build does not have.</div>`;
+  $('ceo').onclick=()=>{
+    const t=`# Freshroots weekly operations report\nInventory as of ${D.as_of} · month ${D.month}\n\n## Summary\n${b.map(x=>'- '+x).join('\n')}\n\n## Metrics\n${e.m.map(([l,v,s])=>`- ${l}: ${v} (${s})`).join('\n')}\n\n## Reorder actions\n${e.R.filter(actionable).map(r=>`- ${r.name}: ${r.recommended_qty} units (${r.weeks_cover} wks cover)`).join('\n')||'- none'}\n`;
+    const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([t],{type:'text/markdown'}));a.download=`ceo_weekly_report_${D.as_of}.md`;a.click()};
+}
+
+// ---- mandate banner (inputs are set by a person; nothing here is measured)
+function mandate(){
+  const sd=ST.start_date,day=sd?Math.max(0,Math.min(90,Math.floor((Date.now()-new Date(sd))/864e5)+1)):null,sp=ST.budget_spent_lakh,sv=ST.savings_lakh;
+  $('mandate').innerHTML=`<div><small>90-day mandate</small>${day==null?'<span class="tag">Start date not set</span>':`<b class="num">Day ${day} / 90</b><div class="prog"><i style="width:${day/90*100}%"></i></div>`} <button data-set="start_date">${day==null?'Set':'Edit'}</button></div>
+  <div><small>Budget utilization</small><b class="num">${sp?'₹'+esc(sp)+'L':'–'} / ₹15.0L</b> <button data-set="budget_spent_lakh">Edit</button></div>
+  <div><small>Quarterly loss reduction</small><b class="num">${sv?'₹'+esc(sv)+'L measured':'Not measured yet'}</b> <span class="tag">baseline ₹28–34L/qtr</span> <button data-set="savings_lakh">Edit</button></div>`;
+  document.querySelectorAll('[data-set]').forEach(b=>b.onclick=async()=>{
+    const k=b.dataset.set,label={start_date:'Mandate start date (YYYY-MM-DD)',budget_spent_lakh:'Budget spent so far, in ₹ lakhs',savings_lakh:'Measured savings so far, in ₹ lakhs (leave blank until measured)'}[k];
+    const v=prompt(label,ST[k]||'');if(v===null)return;
+    if(k==='start_date'&&v&&isNaN(new Date(v)))return alert('Use YYYY-MM-DD.');
+    await fetch('/api/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:k,value:v.trim()})});ST[k]=v.trim();mandate()});
+}
+
+// ---- WhatsApp CS queue (sample threads)
+function csq(){
+  if(!CS){$('cs').innerHTML='<div class="card" style="padding:12px">Sample threads unavailable.</div>';return}
+  const dn=id=>(D.anomalies.distributors.find(d=>d.distributor_id===id)||{name:id}).name,sla=CS.sla_minutes;
+  const badge=t=>t.off_hours?'<span class="badge b-info">7pm / Sunday hold</span>':t.age_min>sla?`<span class="badge b-bad">Overdue ${t.age_min-sla}m</span>`:`<span class="badge b-ok">${t.age_min}m</span>`;
+  const sorted=[...CS.threads].sort((a,b)=>(b.off_hours?-1:0)-(a.off_hours?-1:0)||b.age_min-a.age_min);
+  if(!csSel)csSel=sorted[0].id;const t=CS.threads.find(x=>x.id===csSel),p=CS.profiles[t.distributor_id]||{},d=D.anomalies.distributors.find(x=>x.distributor_id===t.distributor_id);
+  $('cs').innerHTML=`<div class="card">${sorted.map(x=>`<div class="th ${x.id===csSel?'on':''}" data-t="${x.id}"><div style="display:flex;justify-content:space-between;gap:6px;flex-wrap:wrap"><span><span class="badge b-warn">${esc(x.tag)}</span> <b>${esc(dn(x.distributor_id))}</b></span>${badge(x)}</div><div class="tag" style="margin-top:3px">${esc(x.text)}</div></div>`).join('')}</div>
+  <div class="card" style="padding:14px"><b>${esc(dn(t.distributor_id))}</b> <span class="badge b-warn">${esc(t.tag)}</span><div class="wa" style="margin:8px 0"><div class="bub" style="background:#1e293b">${esc(t.text)}</div></div>
+  <div class="cmp"><div><span>Account value (sample)</span><b class="num">₹${p.account_value_lakh??'–'}L/yr</b></div><div><span>Active orders (sample)</span><b class="num">${p.active_orders??'–'}</b></div></div>
+  <div class="tag" style="margin-top:8px">Credit note (sample): ${esc(p.credit_note||'–')} · 4-week volume: ${d?(d.change_pct>0?'+':'')+d.change_pct+'%':'–'} · SLA: ${sla} min in working hours</div>
+  <label class="sw ${ST.autoresponder==='on'?'on':''}" id="ar" style="margin-top:12px"><i></i><span>Off-hours auto-responder (after 7 PM and Sundays)</span></label>
+  <div class="tag">A setting only: sending replies needs the WhatsApp Business API.</div>
+  <div style="margin-top:10px"><button class="p" id="bm">Broadcast Missed Scheme Notification</button></div></div>`;
+  document.querySelectorAll('.th').forEach(e=>e.onclick=()=>{csSel=e.dataset.t;csq()});
+  $('ar').onclick=async()=>{const v=ST.autoresponder==='on'?'off':'on';await fetch('/api/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:'autoresponder',value:v})});ST.autoresponder=v;csq()};
+  $('bm').onclick=()=>{SC.name='Missed scheme: [name]';scheme(t.distributor_id)};
 }
 
 load();

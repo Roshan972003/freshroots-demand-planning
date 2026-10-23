@@ -26,3 +26,15 @@ Live app: https://freshroots-demand-planning-indol.vercel.app
 - **Ticker (under the header):** compares each region's latest week with its prior 4-week average. If a region moves more than 20%, it names the region and the open POs on that region's SKUs, and **Review & Hold Purchase Order** opens a drawer that logs a hold request for procurement (the tool never edits a PO). The seed has no real shift, so use **Simulate a Maharashtra -22% shift**; the alert is tagged SIMULATED.
 - **Distributors table, Send Scheme Alert:** pick recipients, scheme name, expiry and target SKU, and see a WhatsApp-style preview. You can copy the message or download the recipient list. It does not send: that needs a WhatsApp Business API account.
 - **Burn-down:** projected weeks of cover over 8 weeks for any SKU (default: a perishable at risk), with red, green and amber bands taken from that SKU's own thresholds. Dashed = no new order, solid = with the recommended order at an assumed lead time.
+
+## Command menu, toasts, hotkeys, network map
+- **Cmd/Ctrl+K** opens a command menu (filters, festival toggle, CSV export, draft POs, simulations, jump to a SKU). **J/K** move through rows, **A** approves, **E** edits, **P** pauses (logs a hold with a 10-second undo ring), **?** shows the cheat sheet.
+- Toasts (bottom right) announce a mid-week anomaly or a churn-risk distributor. **Distributor network** is a schematic by region with health rings; a pulsing red ring is a distributor down 30%+ (use "Simulate churn" to see one). Click a node to open its panel and broadcast a scheme.
+
+## Executive view, CS queue, gate, rules
+- **Mandate banner:** day count, budget used and measured savings are typed in by a person (✎ buttons) and saved. Nothing there is measured automatically; savings read "Not measured yet" until someone enters a figure.
+- **Executive dashboard:** 12 metrics computed from the data we have, an auto-generated three-line summary (rules, not an LLM) and a downloadable CEO report. Fulfilment rate, overstock value and complaints need SAP/WhatsApp data.
+- **WhatsApp CS queue:** SAMPLE threads only, with SLA badges and an off-hours auto-responder setting. Nothing is sent: that needs the WhatsApp Business API.
+- **Pre-flight gate (Execute batch POs):** compares Monday's snapshot with live signals (the mid-week regional shift). If demand differs by more than 10%, single-click approval is blocked and you must confirm the adjusted order.
+- **Judgment capture:** overriding opens a modal for a reason tag and an optional switch that turns the override into a 30-day rule for that SKU's reorder quantity (removable).
+- **Rule inspector:** each SKU's drawer shows the four logic steps (4-vs-12-week, festival uplift, perishability window, final recommendation) with one-click approval.

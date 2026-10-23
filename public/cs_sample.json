@@ -1,0 +1,76 @@
+{
+ "note": "SAMPLE DATA for demonstrating the CS queue. WhatsApp is not connected and no real threads exist.",
+ "sla_minutes": 30,
+ "threads": [
+  {
+   "id": "T1",
+   "distributor_id": "DIST001",
+   "tag": "Order Status",
+   "text": "Where is my order from Monday? Truck not reached yet.",
+   "age_min": 78,
+   "off_hours": false
+  },
+  {
+   "id": "T2",
+   "distributor_id": "DIST002",
+   "tag": "Scheme Eligibility",
+   "text": "Am I eligible for the festive volume scheme? Registration closes soon.",
+   "age_min": 52,
+   "off_hours": false
+  },
+  {
+   "id": "T3",
+   "distributor_id": "DIST003",
+   "tag": "Returns/Credit Note",
+   "text": "Credit note for the damaged Quinoa cartons still not received.",
+   "age_min": 14,
+   "off_hours": false
+  },
+  {
+   "id": "T4",
+   "distributor_id": "DIST004",
+   "tag": "Delivery ETA",
+   "text": "Need ETA for tomorrow's Bread delivery.",
+   "age_min": 410,
+   "off_hours": true
+  },
+  {
+   "id": "T5",
+   "distributor_id": "DIST001",
+   "tag": "Scheme Eligibility",
+   "text": "Did my registration for the Mango Drink scheme go through?",
+   "age_min": 9,
+   "off_hours": false
+  },
+  {
+   "id": "T6",
+   "distributor_id": "DIST002",
+   "tag": "Order Status",
+   "text": "Order #SO-5521 shows pending since morning.",
+   "age_min": 1250,
+   "off_hours": true
+  }
+ ],
+ "profiles": {
+  "DIST001": {
+   "account_value_lakh": 28,
+   "active_orders": 3,
+   "credit_note": "None pending"
+  },
+  "DIST002": {
+   "account_value_lakh": 22,
+   "active_orders": 2,
+   "credit_note": "1 pending"
+  },
+  "DIST003": {
+   "account_value_lakh": 19,
+   "active_orders": 1,
+   "credit_note": "1 pending (damaged goods)"
+  },
+  "DIST004": {
+   "account_value_lakh": 24,
+   "active_orders": 2,
+   "credit_note": "None pending"
+  }
+ }
+}
