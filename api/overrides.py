@@ -5,6 +5,8 @@ from urllib.parse import urlparse, parse_qs
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import _store
 
+TAGS = ("Competitor scheme", "Distributor onboarding", "Unseasonal weather", "Trade promotion", "New launch", "Distributor anomaly", "Other")
+
 class handler(BaseHTTPRequestHandler):
     def _send(self, code, obj):
         body = json.dumps(obj).encode()
@@ -32,9 +34,12 @@ class handler(BaseHTTPRequestHandler):
             if final_qty < 0:
                 return self._send(400, {"error": "final_qty must be >= 0"})
             reason = (b.get("reason") or "")[:300]
-            if decision == "overridden" and not reason.strip():
-                return self._send(400, {"error": "a reason is required when overriding"})
-            _store.save_override(as_of, sku, decision, str(b.get("rec_status", "")), rec_qty, final_qty, reason)
+            tag = (b.get("tag") or "")
+            if tag and tag not in TAGS:
+                return self._send(400, {"error": "unknown reason tag"})
+            if decision == "overridden" and not (reason.strip() or tag):
+                return self._send(400, {"error": "a reason tag or note is required when overriding"})
+            _store.save_override(as_of, sku, decision, str(b.get("rec_status", "")), rec_qty, final_qty, reason, tag)
             self._send(200, {"ok": True})
         except (KeyError, ValueError, TypeError) as e:
             self._send(400, {"error": f"bad request: {e}"})

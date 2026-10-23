@@ -1,64 +1,220 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Freshroots Demand Planning</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#fafaf7;--card:#fff;--ink:#1c1f1a;--mute:#6b7066;--line:#e4e5df;--red:#b42318;--redbg:#fde8e6;--amb:#9a5b00;--ambbg:#fff1d6;--grn:#1f6b3a;--grnbg:#e3f3e8;--blu:#1d4f91;--blubg:#e4eefb;--gry:#555;--grybg:#eee}
-@media(prefers-color-scheme:dark){:root{--bg:#141612;--card:#1c1f1a;--ink:#ecede8;--mute:#9a9f93;--line:#2c3029;--red:#ff9a8f;--redbg:#3a1a17;--amb:#f2c066;--ambbg:#352708;--grn:#7fd49a;--grnbg:#12301d;--blu:#9cc2f5;--blubg:#14263d;--gry:#bbb;--grybg:#2a2d27}}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,sans-serif}
-main{max-width:1100px;margin:0 auto;padding:24px 16px 60px}h1{font-size:22px;margin:0}.sub{color:var(--mute);margin:4px 0 20px}
-.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:18px}
-.kpi{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px;cursor:pointer}.kpi b{display:block;font-size:26px}.kpi span{color:var(--mute);font-size:13px}.kpi.on{outline:2px solid var(--ink)}
-table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);border-radius:10px;overflow:hidden}
-th,td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--line);font-size:14px}th{font-size:12px;color:var(--mute);text-transform:uppercase;letter-spacing:.04em}
-td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}tr.row{cursor:pointer}tr.row:hover{background:var(--grybg)}
-.pill{padding:2px 9px;border-radius:99px;font-size:12px;font-weight:600;white-space:nowrap}
-.REORDER_NOW{background:var(--redbg);color:var(--red)}.REORDER{background:var(--ambbg);color:var(--amb)}.PAUSE_ORDER{background:var(--blubg);color:var(--blu)}.OK{background:var(--grnbg);color:var(--grn)}.REVIEW{background:var(--grybg);color:var(--gry)}
-.det td{background:var(--bg);padding:14px 16px}.det ul{margin:0 0 10px;padding-left:18px}svg{display:block}
-.bar{height:6px;background:var(--grybg);border-radius:3px;min-width:70px;position:relative}.bar i{position:absolute;top:-2px;height:10px;width:2px;background:var(--ink)}.bar u{position:absolute;left:0;top:0;height:6px;border-radius:3px;background:var(--mute)}
-.dec{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:12px}.dec button{font:inherit;padding:6px 12px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer}.dec button.p{background:var(--ink);color:var(--bg)}.dec input{font:inherit;padding:6px 8px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink)}.tag{font-size:12px;margin-left:6px}.err{color:var(--red)}
-.note{color:var(--mute);font-size:13px;margin-top:18px}.wrap{overflow-x:auto}
-</style></head><body><main>
-<h1>Demand Planning &mdash; Recommendations</h1>
-<div class="sub" id="sub"></div><div class="kpis" id="kpis"></div>
-<div class="wrap"><table><thead><tr><th>SKU</th><th>Status</th><th class="n">Stock</th><th class="n">Cover (wks)</th><th>vs. window</th><th class="n">Order qty</th></tr></thead><tbody id="tb"></tbody></table></div>
+:root{--bg:#f4f6f9;--panel:#fff;--inset:#e5e9f0;--ink:#0f172a;--mute:#64748b;--brand:#059669;--brandbg:#d1fae5;--warn:#b45309;--warnbg:#fef3c7;--bad:#b91c1c;--badbg:#fee2e2;--info:#1d4ed8;--infobg:#dbeafe;--shadow:0 1px 2px rgba(15,23,42,.06)}
+@media(prefers-color-scheme:dark){:root{--bg:#0b0f17;--panel:#161f30;--inset:#1e293b;--ink:#f8fafc;--mute:#94a3b8;--brand:#10b981;--brandbg:#0c3b2c;--warn:#f59e0b;--warnbg:#3a2a08;--bad:#ef4444;--badbg:#3f1417;--info:#93c5fd;--infobg:#142a4a;--shadow:0 1px 2px rgba(0,0,0,.4)}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 "Plus Jakarta Sans",system-ui,sans-serif;letter-spacing:-.005em}
+.mono,.num{font-family:"JetBrains Mono",ui-monospace,monospace;font-variant-numeric:tabular-nums}
+main{max-width:1240px;margin:0 auto;padding:20px 16px 80px}
+header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;margin-bottom:6px}
+h1{font-size:20px;margin:0;font-weight:700}.sub{color:var(--mute);margin:2px 0 16px;font-size:13px}
+.ctl{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.card{background:var(--panel);border:1px solid var(--inset);border-radius:12px;box-shadow:var(--shadow)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px}
+.kpi{padding:12px 14px;cursor:pointer;border-left:3px solid var(--inset)}.kpi b{display:block;font-size:24px;font-weight:700}.kpi span{color:var(--mute);font-size:12px}
+.kpi.bad{border-left-color:var(--bad)}.kpi.warn{border-left-color:var(--warn)}.kpi.ok{border-left-color:var(--brand)}.kpi.on{outline:2px solid var(--ink)}.kpi.static{cursor:default}
+.sw{display:inline-flex;align-items:center;gap:8px;cursor:pointer;user-select:none;font-weight:600;font-size:13px}
+.sw i{width:34px;height:20px;border-radius:99px;background:var(--inset);position:relative;transition:.15s}.sw i:after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:.15s}
+.sw.on i{background:var(--brand)}.sw.on i:after{left:16px}
+.sim{padding:12px 14px;margin-bottom:14px;display:flex;flex-wrap:wrap;gap:16px;align-items:center}
+.sim input[type=range]{accent-color:var(--brand);width:220px}
+.banner{padding:8px 12px;border-radius:8px;background:var(--warnbg);color:var(--warn);font-weight:600;margin-bottom:12px}
+.bar{display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
+button{font:inherit;font-weight:600;padding:7px 12px;border-radius:8px;border:1px solid var(--inset);background:var(--panel);color:var(--ink);cursor:pointer}
+button.p{background:var(--brand);border-color:var(--brand);color:#04130d}button:disabled{opacity:.45;cursor:not-allowed}
+.wrap{overflow-x:auto}table{width:100%;border-collapse:collapse}
+th{position:sticky;top:0;background:var(--panel);font-size:11px;color:var(--mute);text-transform:uppercase;letter-spacing:.06em;text-align:left;padding:10px 12px;border-bottom:1px solid var(--inset);white-space:nowrap}
+td{padding:10px 12px;border-bottom:1px solid var(--inset);vertical-align:middle}tr:last-child td{border-bottom:0}
+tr.row:hover td{background:color-mix(in srgb,var(--inset) 40%,transparent)}
+.n{text-align:right}.id{font-size:11px;color:var(--mute)}
+.badge{display:inline-block;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:700;letter-spacing:.03em;white-space:nowrap;margin:1px 2px 1px 0}
+.b-bad{background:var(--badbg);color:var(--bad)}.b-warn{background:var(--warnbg);color:var(--warn)}.b-ok{background:var(--brandbg);color:var(--brand)}.b-info{background:var(--infobg);color:var(--info)}
+.trend{display:flex;align-items:center;gap:8px;min-width:130px}.trend .t{flex:1;height:6px;background:var(--inset);border-radius:3px;position:relative}
+.trend .t u{position:absolute;top:0;height:6px;border-radius:3px;text-decoration:none}.trend .t:before{content:"";position:absolute;left:50%;top:-2px;width:1px;height:10px;background:var(--mute)}
+.tag{font-size:11px;color:var(--mute)}
+.ov{position:fixed;inset:0;background:rgba(2,6,23,.55);backdrop-filter:blur(2px);display:none;z-index:9}.ov.on{display:block}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(460px,100%);background:var(--panel);border-left:1px solid var(--inset);z-index:10;transform:translateX(100%);transition:.2s;overflow-y:auto;padding:18px}
+.drawer.on{transform:none}.drawer h2{margin:0 0 2px;font-size:17px}.drawer h3{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--mute);margin:18px 0 6px}
+.drawer ul{margin:0;padding-left:18px}.drawer input[type=text],.drawer input[type=number]{font:inherit;padding:7px 9px;border-radius:8px;border:1px solid var(--inset);background:var(--bg);color:var(--ink);width:100%}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}.chip{padding:4px 10px;border-radius:99px;border:1px solid var(--inset);cursor:pointer;font-size:12px;font-weight:600}.chip.on{background:var(--brand);border-color:var(--brand);color:#04130d}
+.cmp{display:grid;grid-template-columns:1fr 1fr;gap:8px}.cmp div{padding:10px;border-radius:10px;background:var(--bg)}.cmp b{display:block;font-size:20px}.cmp span{font-size:11px;color:var(--mute)}
+.err{color:var(--bad);margin-top:8px;font-weight:600}.okmsg{color:var(--brand);margin-top:8px;font-weight:600}
+svg{display:block;color:var(--brand)}
+.note{color:var(--mute);font-size:12px;margin-top:16px}
+</style>
+</head>
+<body>
+<main>
+<header>
+  <div><h1>Freshroots Demand Planning Control Tower</h1><div class="sub" id="sub">Loading…</div></div>
+  <div class="ctl"><span class="sw" id="fest" role="switch" tabindex="0"><i></i><span id="festLabel">Festival uplift +25%</span></span></div>
+</header>
+
+<div class="kpis" id="kpis"></div>
+
+<div class="card sim">
+  <b>What-if</b>
+  <label>Demand change <input id="adj" type="range" min="-50" max="50" step="5" value="0"> <span class="num" id="adjv">0%</span></label>
+  <button id="reset">Reset</button>
+  <span class="tag">Simulation only: while it differs from the real plan, decisions and POs are disabled.</span>
+</div>
+<div id="banner"></div>
+
+<div class="bar">
+  <button id="selAct">Select actionable</button>
+  <button id="draft" class="p" disabled>Accept &amp; create draft POs (0)</button>
+  <button id="csv">Export proposals (CSV)</button>
+  <span class="tag" id="bmsg"></span>
+</div>
+
+<div class="card wrap"><table>
+<thead><tr><th></th><th>SKU</th><th class="n">Stock</th><th class="n">Cover (wks)</th><th>4-wk vs 12-wk</th><th>Status</th><th>System action</th><th class="n">Qty</th><th>Planner</th></tr></thead>
+<tbody id="tb"></tbody></table></div>
+
 <p class="note" id="rules"></p>
-</main><script>
-let D=null,OV={},filter=null,open=null,msg='';
-const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const L={REORDER_NOW:'Reorder now',REORDER:'Reorder (1.5x)',PAUSE_ORDER:'Pause order',OK:'OK',REVIEW:'Needs review'};
+<p class="note">Quarterly loss baseline from the case: ₹28–34 lakhs (₹18–22L stockouts + ₹10–12L overstock write-offs). Per-SKU rupee impact needs price data, which the seed does not include.</p>
+</main>
+
+<div class="ov" id="ov"></div>
+<aside class="drawer" id="dr" aria-label="SKU review"></aside>
+
+<script>
+let D=null,OV={},filter=null,open=null,sel=new Set(),tag='',msg='',ok='',fest=null,adj=0;
 const $=id=>document.getElementById(id);
-function spark(w,avg){const v=w.map(x=>x[1]),mx=Math.max(...v,avg)*1.1,mn=Math.min(...v)*0.9,W=360,H=70;
- const p=v.map((y,i)=>[i*(W/(v.length-1)),H-(y-mn)/(mx-mn)*H]);const ay=H-(avg-mn)/(mx-mn)*H;
- const n=v.length,r=D.config.recent_weeks;
- return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Weekly sales"><line x1="0" x2="${W}" y1="${ay}" y2="${ay}" stroke="currentColor" stroke-opacity=".35" stroke-dasharray="3"/><polyline fill="none" stroke="currentColor" stroke-width="2" points="${p.map(q=>q.join(',')).join(' ')}"/><rect x="${p[n-r][0]}" y="0" width="${W-p[n-r][0]}" height="${H}" fill="currentColor" opacity=".08"/></svg>`}
-function render(){
- const c={};D.results.forEach(r=>c[r.status]=(c[r.status]||0)+1);
- $('sub').textContent=`Inventory as of ${D.as_of} · planning month ${D.month}${D.festival?' (festival: +25% demand uplift)':''} · ${D.results.length} SKUs · stock: ${D.sources.stock} · open POs: ${D.sources.open_orders}${D.zoho&&D.zoho.mode=='demo'&&D.sources.open_orders=='zoho'?' (Zoho DEMO SANDBOX, simulated)':''}${D.zoho&&D.zoho.error?' · WARNING Zoho unavailable, using CSV ('+D.zoho.error+')':''}`;
- $('kpis').innerHTML=['REORDER_NOW','REORDER','PAUSE_ORDER','REVIEW','OK'].map(s=>`<div class="kpi ${filter==s?'on':''}" data-s="${s}"><b>${c[s]||0}</b><span>${L[s]}</span></div>`).join('');
- const ds=Object.values(OV),ov=ds.filter(x=>x.decision=='overridden').length;$('kpis').insertAdjacentHTML('beforeend',`<div class="kpi" style="cursor:default"><b>${ds.length?Math.round(ov/ds.length*100)+'%':'–'}</b><span>Override rate (${ov} of ${ds.length} decided)</span></div>`);
- document.querySelectorAll('.kpi[data-s]').forEach(k=>k.onclick=()=>{filter=filter==k.dataset.s?null:k.dataset.s;render()});
- $('tb').innerHTML=D.results.filter(r=>!filter||r.status==filter).map(r=>{
-  const mx=Math.max(r.max_weeks*1.6,r.weeks_cover||0),pc=v=>Math.min(100,v/mx*100)+'%';
-  const row=`<tr class="row" data-k="${r.sku}"><td><b>${esc(r.name.replace('Freshroots ',''))}</b><br><small style="color:var(--mute)">${r.sku} · ${r.distributor}${r.perishability=='High'?' · perishable':''}</small></td><td><span class="pill ${r.status}">${L[r.status]}</span>${OV[r.sku]?`<span class="tag">${OV[r.sku].decision=='accepted'?'✓ accepted':'✎ overridden ('+esc(OV[r.sku].final_qty)+')'}</span>`:''}</td><td class="n">${r.stock??'–'}</td><td class="n">${r.weeks_cover??'–'}</td><td><div class="bar" title="Safe window ${r.min_weeks}-${r.max_weeks} wks"><u style="left:${pc(r.min_weeks)};width:calc(${pc(r.max_weeks)} - ${pc(r.min_weeks)});opacity:.35"></u><i style="left:${pc(r.weeks_cover||0)}"></i></div></td><td class="n">${r.recommended_qty||'–'}</td></tr>`;
-  const det=open==r.sku?`<tr class="det"><td colspan="6"><ul>${r.reasons.map(x=>`<li>${esc(x)}</li>`).join('')||'<li>Within all thresholds.</li>'}</ul>${r.weekly.length?spark(r.weekly.slice(-D.config.baseline_weeks),r.avg12)+`<small style="color:var(--mute)">Last ${D.config.baseline_weeks} weeks · dashed = 12-wk avg (${r.avg12}) · shaded = last 4 wks (${r.recent4}, ${r.spike_pct>0?'+':''}${r.spike_pct}%)</small>`:''}${r.status!='OK'?`<div class="dec"><button class="p" onclick="decide('${r.sku}','accepted')">Accept recommendation</button><span>or override:</span><input id="fq" type="number" min="0" placeholder="Qty" style="width:90px" value="${OV[r.sku]?.decision=='overridden'?esc(OV[r.sku].final_qty):''}"><input id="rs" placeholder="Reason (required)" style="width:220px" value="${OV[r.sku]?.decision=='overridden'?esc(OV[r.sku].reason):''}"><button onclick="decide('${r.sku}','overridden')">Override</button>${OV[r.sku]?`<button onclick="undo('${r.sku}')">Clear</button>`:''}${D.zoho&&D.zoho.draft_enabled&&OV[r.sku]&&OV[r.sku].final_qty>0?`<button onclick="poDraft('${r.sku}')">Create draft PO in Zoho (${esc(OV[r.sku].final_qty)})</button>`:''}</div>${msg?`<div class="err">${esc(msg)}</div>`:''}`:''}${r.status=='REVIEW'&&r.rule_qty?`<br><small>Rule-based qty before review: ${r.rule_qty}</small>`:''}</td></tr>`:'';
-  return row+det}).join('');
- document.querySelectorAll('.row').forEach(t=>t.onclick=()=>{open=open==t.dataset.k?null:t.dataset.k;render()});
- const g=D.config;$('rules').textContent=`Rules (from Raghav): spike >${g.spike_threshold*100}% over 12-wk avg → reorder ${g.high_demand_multiplier}x; cover <${g.stockout_weeks} wks → reorder now; >${g.overstock_weeks} wks → pause; perishable window ${g.perishable_min_weeks}–${g.perishable_max_weeks} wks; festival months uplift demand ${g.festival_uplift*100}%. Anything outside these rules goes to review.`}
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const TAGS=["Competitor scheme","Distributor onboarding","Unseasonal weather","Trade promotion","New launch","Distributor anomaly","Other"];
+const ACT={REORDER_NOW:'Immediate reorder',REORDER:'1.5x standard order',PAUSE_ORDER:'Pause order',OK:'Maintain baseline',REVIEW:'Human review'};
+const simulating=()=>adj!==0||(D&&fest!==null&&fest!==D.calendar_festival);
+
 async function load(){
- try{const r=await fetch('/api/recommendations');D=await r.json();if(D.error)throw new Error(D.error);
-  const o=await fetch('/api/overrides?as_of='+D.as_of);OV={};(await o.json()).forEach(x=>OV[x.sku]=x);
- }catch(e){$('sub').innerHTML='<span class="err">Could not load: '+esc(e.message)+'</span>';return}
- render()}
-async function decide(sku,decision){
- const r=D.results.find(x=>x.sku==sku);const body={as_of:D.as_of,sku,decision,rec_status:r.status,rec_qty:r.rule_qty??r.recommended_qty??0};
- if(decision=='overridden'){body.final_qty=$('fq').value;body.reason=$('rs').value}
- const res=await fetch('/api/overrides',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
- const j=await res.json();msg=res.ok?'':(j.error||'Save failed');
- if(res.ok){const o=await fetch('/api/overrides?as_of='+D.as_of);OV={};(await o.json()).forEach(x=>OV[x.sku]=x)}
- render()}
-async function poDraft(sku){
- const o=OV[sku];if(!o||!confirm(`Create a DRAFT purchase order in Zoho for ${o.final_qty} units of ${sku}? You still review and issue it in Zoho.`))return;
- const res=await fetch('/api/zoho_po',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sku,qty:o.final_qty,as_of:D.as_of})});
- const j=await res.json();msg=res.ok?`Draft ${j.purchaseorder_number||j.purchaseorder_id} created in Zoho (${j.status}). Review and issue it there.`:(j.error||'Zoho request failed');render()}
-async function undo(sku){await fetch(`/api/overrides?as_of=${D.as_of}&sku=${sku}`,{method:'DELETE'});delete OV[sku];render()}
+  try{
+    const q=new URLSearchParams();if(fest!==null)q.set('festival',fest?'1':'0');if(adj)q.set('adj',adj);
+    D=await (await fetch('/api/recommendations?'+q)).json();if(D.error)throw new Error(D.error);
+    if(fest===null)fest=D.festival;
+    OV={};(await (await fetch('/api/overrides?as_of='+D.as_of)).json()).forEach(x=>OV[x.sku]=x);
+  }catch(e){$('sub').textContent='Could not load: '+e.message;return}
+  render();
+}
+function badges(r){
+  if(r.status==='REVIEW')return '<span class="badge b-info">REVIEW</span>';
+  const b=[];
+  if(r.flags.includes('STOCKOUT_RISK'))b.push('<span class="badge b-bad">STOCKOUT RISK</span>');
+  if(r.flags.includes('OVERSTOCK_RISK'))b.push('<span class="badge b-warn">OVERSTOCK RISK</span>');
+  if(r.flags.includes('HIGH_DEMAND'))b.push('<span class="badge b-warn">HIGH DEMAND</span>');
+  return b.join('')||'<span class="badge b-ok">HEALTHY</span>';
+}
+function trend(p){
+  const v=Math.max(-40,Math.min(40,p)),w=Math.abs(v)/40*50,hot=p>20;
+  return `<div class="trend"><div class="t"><u style="${v>=0?'left:50%':'right:50%'};width:${w}%;background:${hot?'var(--warn)':p<-10?'var(--bad)':'var(--brand)'}"></u></div><span class="num" style="min-width:52px;text-align:right">${p>0?'+':''}${p}%</span></div>`;
+}
+const actionable=r=>r.status==='REORDER_NOW'||r.status==='REORDER';
+function render(){
+  const R=D.results,c=s=>R.filter(r=>r.status===s).length;
+  const so=R.filter(r=>r.flags.includes('STOCKOUT_RISK')).length,ovr=R.filter(r=>r.flags.includes('OVERSTOCK_RISK')).length,hd=R.filter(r=>r.flags.includes('HIGH_DEMAND')).length;
+  const ds=Object.values(OV),ovn=ds.filter(x=>x.decision==='overridden').length;
+  const z=D.sources.open_orders==='zoho'||D.sources.stock==='zoho'?` · Zoho${D.zoho&&D.zoho.mode==='demo'?' DEMO SANDBOX (simulated)':''}`:'';
+  $('sub').textContent=`Inventory as of ${D.as_of} · month ${D.month} · ${R.length} SKUs · stock: ${D.sources.stock} · open POs: ${D.sources.open_orders}${z}${D.zoho&&D.zoho.error?' · WARNING Zoho unavailable, using CSV ('+D.zoho.error+')':''}`;
+  $('fest').classList.toggle('on',!!fest);$('festLabel').textContent=`Festival uplift +25%${D.calendar_festival?' (calendar: on)':' (calendar: off)'}`;
+  $('adjv').textContent=(adj>0?'+':'')+adj+'%';
+  $('banner').innerHTML=simulating()?`<div class="banner">Simulation active: ${adj?`demand ${adj>0?'+':''}${adj}%`:''}${adj&&fest!==D.calendar_festival?', ':''}${fest!==D.calendar_festival?`festival uplift ${fest?'forced on':'forced off'}`:''}. Decisions and POs are disabled until you reset.</div>`:'';
+  const K=[['all','Active SKUs monitored',R.length,'ok'],['STOCKOUT','Stockout risk',so,'bad'],['OVERSTOCK','Overstock risk',ovr,'warn'],['HIGH','High demand',hd,'warn'],['REVIEW','Needs review',c('REVIEW'),''],];
+  $('kpis').innerHTML=K.map(([k,l,n,cl])=>`<div class="card kpi ${cl} ${filter===k?'on':''}" data-k="${k}"><b class="num">${n}</b><span>${l}</span></div>`).join('')+
+    `<div class="card kpi static"><b class="num">${ds.length?Math.round(ovn/ds.length*100)+'%':'–'}</b><span>Override rate (${ovn} of ${ds.length} decided)</span></div>`;
+  document.querySelectorAll('.kpi[data-k]').forEach(e=>e.onclick=()=>{filter=filter===e.dataset.k||e.dataset.k==='all'?null:e.dataset.k;render()});
+  const pass=r=>!filter||(filter==='STOCKOUT'&&r.flags.includes('STOCKOUT_RISK'))||(filter==='OVERSTOCK'&&r.flags.includes('OVERSTOCK_RISK'))||(filter==='HIGH'&&r.flags.includes('HIGH_DEMAND'))||(filter==='REVIEW'&&r.status==='REVIEW');
+  $('tb').innerHTML=R.filter(pass).map(r=>{
+    const o=OV[r.sku];
+    return `<tr class="row"><td><input type="checkbox" data-s="${r.sku}" ${sel.has(r.sku)?'checked':''} ${actionable(r)&&!simulating()?'':'disabled'}></td>
+    <td><b>${esc(r.name.replace('Freshroots ',''))}</b><br><span class="id mono">${r.sku}</span> <span class="tag">${esc(r.category)}${r.perishability==='High'?' · <b>perishable</b>':''}</span></td>
+    <td class="n num">${r.stock??'–'}</td><td class="n num">${r.weeks_cover??'–'}</td><td>${r.spike_pct==null?'–':trend(r.spike_pct)}</td>
+    <td>${badges(r)}</td><td>${ACT[r.status]}${o?`<br><span class="tag">${o.decision==='accepted'?'✓ accepted':'✎ overridden → '+esc(o.final_qty)+(o.tag?' · '+esc(o.tag):'')}</span>`:''}</td>
+    <td class="n num">${r.recommended_qty||'–'}</td><td><button data-r="${r.sku}">Review</button></td></tr>`}).join('');
+  document.querySelectorAll('[data-r]').forEach(b=>b.onclick=()=>{open=b.dataset.r;tag=OV[open]?.tag||'';msg=ok='';drawer()});
+  document.querySelectorAll('input[data-s]').forEach(b=>b.onchange=()=>{b.checked?sel.add(b.dataset.s):sel.delete(b.dataset.s);bar()});
+  const g=D.config;$('rules').textContent=`Rules (Raghav): spike >${g.spike_threshold*100}% over 12-wk avg → reorder ${g.high_demand_multiplier}x · cover <${g.stockout_weeks} wks → reorder now · >${g.overstock_weeks} wks → pause · perishable ${g.perishable_min_weeks}–${g.perishable_max_weeks} wks · festival months +${g.festival_uplift*100}% demand. Anything outside the rules goes to review.`;
+  bar();if(open)drawer();
+}
+function bar(){
+  const n=[...sel].filter(s=>D.results.find(r=>r.sku===s&&actionable(r))).length,canDraft=D.zoho&&D.zoho.draft_enabled;
+  $('draft').textContent=`Accept & create draft POs (${n})`;$('draft').disabled=!n||simulating()||!canDraft;
+  $('draft').title=canDraft?'':'Draft POs need ZOHO_ALLOW_DRAFT_PO and a Zoho connection or demo sandbox';
+}
+function spark(w,avg,r4){
+  const v=w.map(x=>x[1]),mx=Math.max(...v,avg)*1.1,mn=Math.min(...v)*.9,W=410,H=64,n=v.length;
+  const p=v.map((y,i)=>[i*(W/(n-1)),H-(y-mn)/(mx-mn)*H]),ay=H-(avg-mn)/(mx-mn)*H,x0=p[n-D.config.recent_weeks][0];
+  return `<svg width="100%" viewBox="0 0 ${W} ${H}" role="img" aria-label="Weekly sales"><rect x="${x0}" y="0" width="${W-x0}" height="${H}" fill="currentColor" opacity=".1"/><line x1="0" x2="${W}" y1="${ay}" y2="${ay}" stroke="currentColor" stroke-opacity=".5" stroke-dasharray="3"/><polyline fill="none" stroke="currentColor" stroke-width="2" points="${p.map(q=>q.join(',')).join(' ')}"/></svg>`;
+}
+function drawer(){
+  const r=D.results.find(x=>x.sku===open);if(!r){closeDr();return}
+  const o=OV[r.sku],dis=simulating(),proj=r.demand_rate?((r.stock+(r.on_order||0)+(r.recommended_qty||0))/r.demand_rate).toFixed(1):'–';
+  $('dr').innerHTML=`<div style="display:flex;justify-content:space-between;align-items:start"><div><h2>${esc(r.name.replace('Freshroots ',''))}</h2><span class="id mono">${r.sku}</span> · <span class="tag">${esc(r.distributor)}</span></div><button id="cl">Close</button></div>
+  <div style="margin-top:8px">${badges(r)} <b>${ACT[r.status]}</b></div>
+  <h3>Why</h3><ul>${r.reasons.map(x=>`<li>${esc(x)}</li>`).join('')||'<li>Within all thresholds.</li>'}</ul>
+  ${r.weekly.length?`<h3>Last 12 weeks</h3>${spark(r.weekly.slice(-D.config.baseline_weeks),r.avg12)}<div class="tag">dashed = 12-wk avg (${r.avg12}) · shaded = last 4 wks (${r.recent4}, ${r.spike_pct>0?'+':''}${r.spike_pct}%)</div>`:''}
+  <h3>Reorder preview</h3><div class="cmp"><div><span>Now</span><b class="num">${r.weeks_cover??'–'} wks</b><span class="num">${r.stock??'–'} units${r.on_order?` + ${r.on_order} on order`:''}</span></div>
+  <div><span>After recommended order</span><b class="num">${proj} wks</b><span class="num">+${r.recommended_qty||0} units · safe ${r.min_weeks}–${r.max_weeks}</span></div></div>
+  <h3>Planner decision (the 15–20% judgment)</h3>
+  ${dis?'<div class="banner">Reset the simulation to record decisions.</div>':''}
+  <button class="p" id="acc" ${dis||r.status==='OK'?'disabled':''}>Accept recommendation</button>
+  <div style="margin-top:12px" class="tag">Or override. Reason tag:</div>
+  <div class="chips">${TAGS.map(t=>`<span class="chip ${tag===t?'on':''}" data-t="${esc(t)}">${esc(t)}</span>`).join('')}</div>
+  <div class="cmp"><input id="fq" type="number" min="0" placeholder="Order qty" value="${o?.decision==='overridden'?esc(o.final_qty):''}"><input id="rs" type="text" maxlength="300" placeholder="Note (optional)" value="${esc(o?.reason||'')}"></div>
+  <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap"><button id="ovr" ${dis?'disabled':''}>Override</button>${o?'<button id="clr">Clear decision</button>':''}
+  ${D.zoho&&D.zoho.draft_enabled&&o&&o.final_qty>0?`<button id="po" ${dis?'disabled':''}>Create draft PO (${esc(o.final_qty)})</button>`:''}</div>
+  ${msg?`<div class="err">${esc(msg)}</div>`:''}${ok?`<div class="okmsg">${esc(ok)}</div>`:''}`;
+  $('dr').classList.add('on');$('ov').classList.add('on');
+  $('cl').onclick=closeDr;
+  document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{tag=tag===c.dataset.t?'':c.dataset.t;drawer()});
+  if($('acc'))$('acc').onclick=()=>save(r,'accepted');$('ovr').onclick=()=>save(r,'overridden');
+  if($('clr'))$('clr').onclick=async()=>{await fetch(`/api/overrides?as_of=${D.as_of}&sku=${r.sku}`,{method:'DELETE'});delete OV[r.sku];msg=ok='';render()};
+  if($('po'))$('po').onclick=()=>draftPo(r.sku,o.final_qty);
+}
+function closeDr(){open=null;$('dr').classList.remove('on');$('ov').classList.remove('on')}
+$('ov').onclick=closeDr;document.addEventListener('keydown',e=>{if(e.key==='Escape')closeDr()});
+async function post(body){const res=await fetch('/api/overrides',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});return[res.ok,await res.json()]}
+async function refreshOv(){OV={};(await (await fetch('/api/overrides?as_of='+D.as_of)).json()).forEach(x=>OV[x.sku]=x)}
+async function save(r,decision){
+  const b={as_of:D.as_of,sku:r.sku,decision,rec_status:r.status,rec_qty:r.rule_qty??r.recommended_qty??0};
+  if(decision==='overridden'){b.final_qty=$('fq').value;b.reason=$('rs').value;b.tag=tag}
+  const[okk,j]=await post(b);msg=okk?'':(j.error||'Save failed');ok=okk?'Saved.':'';if(okk)await refreshOv();render();
+}
+async function draftPo(sku,qty){
+  if(!confirm(`Create a DRAFT purchase order for ${qty} units of ${sku}${D.zoho.mode==='demo'?' in the Zoho DEMO sandbox':' in Zoho'}? A person still reviews and issues it.`))return;
+  const res=await fetch('/api/zoho_po',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sku,qty,as_of:D.as_of})});
+  const j=await res.json();msg=res.ok?'':(j.error||'Zoho request failed');ok=res.ok?`Draft ${j.purchaseorder_number||j.purchaseorder_id} created (${j.status}).`:'';render();
+}
+$('draft').onclick=async()=>{
+  const rows=[...sel].map(s=>D.results.find(r=>r.sku===s)).filter(r=>r&&actionable(r));
+  if(!rows.length||!confirm(`Accept the recommendation and create ${rows.length} draft PO(s)${D.zoho.mode==='demo'?' in the Zoho DEMO sandbox':''}? Drafts are reviewed and issued by a person in Zoho.`))return;
+  let done=0,fail=[];
+  for(const r of rows){
+    let qty=r.recommended_qty;
+    if(OV[r.sku]){qty=OV[r.sku].final_qty;if(!(qty>0)){fail.push(r.sku+': decided qty is 0');continue}}   // keep an existing decision
+    else{const[o1,j1]=await post({as_of:D.as_of,sku:r.sku,decision:'accepted',rec_status:r.status,rec_qty:r.recommended_qty});
+      if(!o1){fail.push(r.sku+': '+j1.error);continue}}
+    const res=await fetch('/api/zoho_po',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sku:r.sku,qty,as_of:D.as_of})});
+    res.ok?done++:fail.push(r.sku+': '+((await res.json()).error||'failed'));
+  }
+  sel.clear();await refreshOv();$('bmsg').textContent=`${done} draft PO(s) created${fail.length?'; failed: '+fail.join('; '):''}`;render();
+};
+$('selAct').onclick=()=>{if(simulating())return;D.results.filter(actionable).forEach(r=>sel.add(r.sku));render()};
+$('csv').onclick=()=>{
+  const rows=D.results.filter(r=>sel.size?sel.has(r.sku):actionable(r));
+  const lines=[['SKU','Name','Status','Recommended_Qty','Decision','Final_Qty','Reason_Tag','Weeks_Cover','As_Of'],...rows.map(r=>{const o=OV[r.sku]||{};return[r.sku,r.name,r.status,r.recommended_qty,o.decision||'',o.final_qty??'',o.tag||'',r.weeks_cover,D.as_of]})];
+  const t=lines.map(l=>l.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(',')).join('\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([t],{type:'text/csv'}));a.download=`reorder_proposals_${D.as_of}.csv`;a.click();
+};
+$('fest').onclick=()=>{fest=!fest;load()};$('fest').onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();fest=!fest;load()}};
+let t;$('adj').oninput=e=>{adj=+e.target.value;$('adjv').textContent=(adj>0?'+':'')+adj+'%';clearTimeout(t);t=setTimeout(load,250)};
+$('reset').onclick=()=>{adj=0;$('adj').value=0;fest=D?D.calendar_festival:null;load()};
 load();
-</script></body></html>
+</script>
+</body>
+</html>

@@ -23,7 +23,7 @@ def read(path):
     with open(path, newline="") as f:
         return list(csv.DictReader(f))
 
-def decide(s, vals, stock, is_fest, cfg=CONFIG, on_order=0):
+def decide(s, vals, stock, is_fest, cfg=CONFIG, on_order=0, demand_adj=0.0):
     """Apply Raghav's rules to one SKU. s = sku_master row, vals = weekly units (oldest first).
     on_order = units already ordered but not yet received (counted as stock for the cover checks)."""
     base = vals[-cfg["baseline_weeks"]:]
@@ -31,6 +31,7 @@ def decide(s, vals, stock, is_fest, cfg=CONFIG, on_order=0):
     avg12, recent4 = mean(base), mean(recent)
     spike = recent4 / avg12 - 1
     rate = avg12 * (1 + cfg["festival_uplift"]) if is_fest else avg12
+    rate *= 1 + demand_adj                       # what-if only; 0 in normal runs
     cover = (stock + on_order) / rate
     perish = s["Perishability"].lower() == "high"
     lo = cfg["perishable_min_weeks"] if perish else cfg["stockout_weeks"]
@@ -46,6 +47,7 @@ def decide(s, vals, stock, is_fest, cfg=CONFIG, on_order=0):
     reasons, review = [], []
     if is_fest: reasons.append(f"Festival month: demand rate uplifted {cfg['festival_uplift']:.0%} ({avg12:.0f} -> {rate:.0f}/wk)")
     if high: reasons.append(f"Last 4 wks avg {recent4:.0f} is {spike:+.0%} vs 12-wk avg {avg12:.0f} (> +20%)")
+    if demand_adj: reasons.append(f"What-if: demand rate {demand_adj:+.0%}")
     if on_order: reasons.append(f"{on_order} units already on order are counted in stock")
     if "STOCKOUT_RISK" in flags: reasons.append(f"Cover {cover:.1f} wks < {lo} wk minimum")
     if "OVERSTOCK_RISK" in flags: reasons.append(f"Cover {cover:.1f} wks > {hi} wk maximum")
@@ -70,12 +72,12 @@ def decide(s, vals, stock, is_fest, cfg=CONFIG, on_order=0):
                 avg12=avg12, recent4=recent4, spike=spike, rate=rate, cover=cover,
                 lo=lo, hi=hi, std=std, stock=stock, perish=perish, on_order=on_order)
 
-def run(data_dir="data", month=None, cfg=CONFIG, open_po=None, stock=None, today=None):
+def run(data_dir="data", month=None, cfg=CONFIG, open_po=None, stock=None, today=None, festival=None, demand_adj=0.0):
     sales = read(f"{data_dir}/weekly_sales.csv")
     skus = {r["SKU_ID"]: r for r in read(f"{data_dir}/sku_master.csv")}
     dists = {r["Distributor_ID"]: r for r in read(f"{data_dir}/distributor_master.csv")}
     inv = {r["SKU_ID"]: r for r in read(f"{data_dir}/current_inventory.csv")}
-    festival = {r["Year_Month"]: r["Is_Festival_Month"].upper() == "TRUE" for r in read(f"{data_dir}/calendar.csv")}
+    festival_cal = {r["Year_Month"]: r["Is_Festival_Month"].upper() == "TRUE" for r in read(f"{data_dir}/calendar.csv")}
 
     # Open purchase orders: passed in live (Zoho) or from data/open_orders.csv (SKU_ID, Quantity). Missing = nothing on order.
     po_source = "zoho" if open_po is not None else "csv"
@@ -98,7 +100,8 @@ def run(data_dir="data", month=None, cfg=CONFIG, open_po=None, stock=None, today
                 inv[sid] = {"SKU_ID": sid, "Location": "Zoho", "Units_On_Hand": str(u), "As_Of_Date": today}
     as_of = max(r["As_Of_Date"] for r in inv.values())
     month = month or as_of[:7]
-    is_fest = festival.get(month)
+    calendar_fest = festival_cal.get(month)
+    is_fest = calendar_fest if festival is None else festival
     results = []
     for sid, s in skus.items():
         weeks = sorted(series.get(sid, {}))
@@ -110,7 +113,7 @@ def run(data_dir="data", month=None, cfg=CONFIG, open_po=None, stock=None, today
         if not inv_row: review.append("No inventory record")
         if len(vals) < cfg["baseline_weeks"]: review.append(f"Only {len(vals)} weeks of history (<{cfg['baseline_weeks']}) - new product?")
         if d is None or d["Status"] != "Active": review.append("Distributor missing or not active")
-        if festival.get(month) is None: review.append(f"Month {month} not in calendar")
+        if festival_cal.get(month) is None: review.append(f"Month {month} not in calendar")
         if review and (not vals or not inv_row):
             results.append(dict(sku=sid, name=s["SKU_Name"], category=s["Category"], perishability=s["Perishability"],
                 distributor=d["Distributor_Name"] if d else s["Distributor_ID"], status="REVIEW", action="Human review",
@@ -118,7 +121,7 @@ def run(data_dir="data", month=None, cfg=CONFIG, open_po=None, stock=None, today
                 demand_rate=None, weeks_cover=None, min_weeks=None, max_weeks=None, weekly=[]))
             continue
 
-        d_ = decide(s, vals, int(inv_row["Units_On_Hand"]), is_fest, cfg, open_po.get(sid, 0))
+        d_ = decide(s, vals, int(inv_row["Units_On_Hand"]), is_fest, cfg, open_po.get(sid, 0), demand_adj)
         flags, reasons, status, action, qty = d_["flags"], d_["reasons"], d_["status"], d_["action"], d_["qty"]
         avg12, recent4, spike, rate, cover = d_["avg12"], d_["recent4"], d_["spike"], d_["rate"], d_["cover"]
         lo, hi, std, stock, perish = d_["lo"], d_["hi"], d_["std"], d_["stock"], d_["perish"]
@@ -138,7 +141,8 @@ def run(data_dir="data", month=None, cfg=CONFIG, open_po=None, stock=None, today
             std_qty=std, weekly=list(zip(weeks, vals))))
     order = {"REORDER_NOW": 0, "REVIEW": 1, "REORDER": 2, "PAUSE_ORDER": 3, "OK": 4}
     results.sort(key=lambda r: (order[r["status"]], r["weeks_cover"] if r["weeks_cover"] is not None else 99))
-    return dict(as_of=as_of, month=month, festival=bool(is_fest), config=cfg, results=results,
+    return dict(as_of=as_of, month=month, festival=bool(is_fest), calendar_festival=bool(calendar_fest), demand_adj=demand_adj,
+                config=cfg, results=results,
                 sources=dict(stock=stock_source, open_orders=po_source))
 
 def max_date(s):

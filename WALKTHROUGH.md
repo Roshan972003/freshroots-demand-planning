@@ -16,3 +16,8 @@ Live app: https://freshroots-demand-planning-indol.vercel.app
 **5. Close (15s).** Quinoa shows 22 weeks of cover, so its next order is paused. Next step: the real backtest on three years of SAP history. The first replay on 16 weeks of data pointed the right way but is too thin to prove it.
 
 **Before presenting:** clear any test overrides with the **Clear** button, so the override rate starts at "–".
+
+## Added in the control-tower redesign
+- **Festival toggle** (top right) re-runs the rules with the +25% uplift forced on or off, and **What-if** shifts demand from -50% to +50%. Both are simulations: decisions and POs are disabled until you reset.
+- **Review** opens a slide-over with the reasons, the 12-week chart, a before/after cover preview, accept/override with reason tags (competitor scheme, distributor onboarding, unseasonal weather, trade promotion, new launch, distributor anomaly, other), and a draft-PO button.
+- **Select actionable, then Accept & create draft POs** drafts POs for the selected SKUs in one go (demo sandbox unless real Zoho is connected). **Export proposals (CSV)** downloads the same list.
