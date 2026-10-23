@@ -8,11 +8,11 @@
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#f4f6f9;--panel:#fff;--inset:#e5e9f0;--ink:#0f172a;--mute:#64748b;--brand:#059669;--brandbg:#d1fae5;--warn:#b45309;--warnbg:#fef3c7;--bad:#b91c1c;--badbg:#fee2e2;--info:#1d4ed8;--infobg:#dbeafe;--shadow:0 1px 2px rgba(15,23,42,.06)}
-@media(prefers-color-scheme:dark){:root{--bg:#0b0f17;--panel:#161f30;--inset:#1e293b;--ink:#f8fafc;--mute:#94a3b8;--brand:#10b981;--brandbg:#0c3b2c;--warn:#f59e0b;--warnbg:#3a2a08;--bad:#ef4444;--badbg:#3f1417;--info:#93c5fd;--infobg:#142a4a;--shadow:0 1px 2px rgba(0,0,0,.4)}}
+@media(prefers-color-scheme:dark){:root{--bg:#080b11;--panel:#111622;--inset:#1e2638;--ink:#f8fafc;--mute:#94a3b8;--brand:#10b981;--brandbg:#0c3b2c;--warn:#f59e0b;--warnbg:#3a2a08;--bad:#ef4444;--badbg:#3f1417;--info:#38bdf8;--infobg:#0c2a40;--shadow:0 1px 2px rgba(0,0,0,.4)}}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 "Plus Jakarta Sans",system-ui,sans-serif;letter-spacing:-.005em}
 .mono,.num{font-family:"JetBrains Mono",ui-monospace,monospace;font-variant-numeric:tabular-nums}
-main{max-width:1240px;margin:0 auto;padding:20px 16px 80px}
+main{max-width:1240px;margin:0 auto;padding:16px 16px 80px}
 header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;margin-bottom:6px}
 h1{font-size:20px;margin:0;font-weight:700}.sub{color:var(--mute);margin:2px 0 16px;font-size:13px}
 .ctl{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
@@ -48,6 +48,14 @@ tr.row:hover td{background:color-mix(in srgb,var(--inset) 40%,transparent)}
 .err{color:var(--bad);margin-top:8px;font-weight:600}.okmsg{color:var(--brand);margin-top:8px;font-weight:600}
 svg{display:block;color:var(--brand)}
 .note{color:var(--mute);font-size:12px;margin-top:16px}
+header.top{position:sticky;top:0;z-index:20;display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center;justify-content:space-between;padding:10px 16px;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--inset)}
+.brand{display:flex;gap:10px;align-items:center}.logo{width:38px;height:38px;border-radius:11px;background:linear-gradient(135deg,var(--brand),#065f46);display:grid;place-items:center;box-shadow:0 0 18px -3px rgba(16,185,129,.35)}
+header.top h1{font-size:15px;letter-spacing:.01em}header.top .mand{margin:0;padding:6px 12px;flex:1 1 520px;gap:14px}header.top .mand>div{min-width:150px}
+.tabs{display:flex;gap:4px;overflow-x:auto;padding:8px 16px;background:var(--panel);border-bottom:1px solid var(--inset)}
+.tabs button{border:1px solid transparent;background:none;color:var(--mute);white-space:nowrap;display:flex;gap:6px;align-items:center}.tabs button:hover{color:var(--ink);background:color-mix(in srgb,var(--inset) 50%,transparent)}
+.tabs button.on{color:var(--brand);background:color-mix(in srgb,var(--brand) 14%,transparent);border-color:color-mix(in srgb,var(--brand) 35%,transparent)}
+.pane[hidden]{display:none}.glow-bad{box-shadow:0 0 22px -4px rgba(239,68,68,.3)}.glow-warn{box-shadow:0 0 22px -4px rgba(245,158,11,.3)}
+
 tr.row.fx td{background:color-mix(in srgb,var(--brand) 10%,transparent)}tr.row.fx td:first-child{box-shadow:inset 3px 0 var(--brand)}
 .kov{position:fixed;inset:0;background:rgba(2,6,23,.8);backdrop-filter:blur(8px);display:none;z-index:30;padding:12vh 16px 0}.kov.on{display:block}
 .kbox{max-width:560px;margin:0 auto;background:var(--panel);border:1px solid var(--inset);border-radius:14px;overflow:hidden}
@@ -83,27 +91,22 @@ select,input[type=date]{font:inherit;padding:6px 9px;border-radius:8px;border:1p
 </style>
 </head>
 <body>
-<main>
-<header>
-  <div><h1>Freshroots Demand Planning Control Tower</h1><div class="sub" id="sub">Loading…</div></div>
+<header class="top">
+  <div class="brand"><div class="logo"><svg viewBox="0 0 24 24" width="22" height="22" fill="#04130d"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></div>
+    <div><h1>Freshroots Control Tower</h1><div class="sub" id="sub" style="margin:0">Loading…</div></div></div>
+  <div class="card mand" id="mandate"></div>
   <div class="ctl"><button id="kbtn" title="Command menu"><kbd>⌘K</kbd> Commands</button><span class="sw" id="fest" role="switch" tabindex="0"><i></i><span id="festLabel">Festival uplift +25%</span></span></div>
 </header>
-<div class="card mand" id="mandate"></div>
-<div id="ticker"></div>
-
+<nav class="tabs" id="tabs" role="tablist">
+  <button data-tab="demand" class="on">Demand planning</button>
+  <button data-tab="mid">Mid-week signals <span class="badge b-bad" id="tb-mid" style="display:none">LIVE ALERT</span></button>
+  <button data-tab="cs">WhatsApp CS desk <span class="badge b-bad" id="tb-cs" style="display:none"></span></button>
+  <button data-tab="exec">Executive view</button>
+  <button data-tab="sim">What-if &amp; burn-down</button>
+</nav>
+<main>
+<div class="pane" id="tab-demand">
 <div class="kpis" id="kpis"></div>
-
-<details class="sec" open><summary style="cursor:pointer;font-weight:700;font-size:15px">Executive dashboard (12 metrics)</summary>
-<div class="card sumc" id="sumc"></div><div class="mt" id="mt"></div></details>
-
-<div class="card sim">
-  <b>What-if</b>
-  <label>Demand change <input id="adj" type="range" min="-50" max="50" step="5" value="0"> <span class="num" id="adjv">0%</span></label>
-  <button id="reset">Reset</button>
-  <span class="tag">Simulation only: while it differs from the real plan, decisions and POs are disabled.</span>
-</div>
-<div id="banner"></div>
-
 <div class="bar">
   <button id="selAct">Select actionable</button>
   <button id="draft" class="p" disabled>Accept &amp; create draft POs (0)</button>
@@ -114,23 +117,39 @@ select,input[type=date]{font:inherit;padding:6px 9px;border-radius:8px;border:1p
 <div class="card wrap"><table>
 <thead><tr><th></th><th>SKU</th><th class="n">Stock</th><th class="n">Cover (wks)</th><th>4-wk vs 12-wk</th><th>Status</th><th>System action</th><th class="n">Qty</th><th>Planner</th></tr></thead>
 <tbody id="tb"></tbody></table></div>
-
-<section class="sec"><h2>Distributors</h2><div class="card wrap"><table>
-<thead><tr><th>Distributor</th><th>Region</th><th class="n">SKUs</th><th class="n">Stockout risk</th><th></th></tr></thead><tbody id="dtb"></tbody></table></div></section>
-
-<section class="sec"><h2>WhatsApp CS queue &amp; SLA <span class="badge b-info">SAMPLE THREADS</span></h2><div class="cs" id="cs"></div></section>
-
+<p class="note" id="rules"></p>
+</div>
+<div class="pane" id="tab-mid" hidden>
+<div id="ticker"></div>
+<div class="sec" style="margin-top:0"><h2>Monday snapshot vs live signals</h2><div class="split" id="mvl"><div class="card" style="padding:14px">Loading…</div></div></div>
 <section class="sec"><h2>Distributor network &amp; churn risk</h2><div class="card">
 <div class="bar"><button id="simChurn">Simulate churn: GrainPath −35%</button><button id="endChurn" style="display:none">End simulation</button>
 <span class="tag"><span style="color:var(--brand)">●</span> healthy · <span style="color:var(--warn)">●</span> order volume down 10–30% · <span style="color:var(--bad)">●</span> pulsing: churn risk (down 30%+). Schematic by region, not to scale: the data has no city locations.</span></div>
 <div id="net"></div></div></section>
-
+<section class="sec"><h2>Distributors</h2><div class="card wrap"><table>
+<thead><tr><th>Distributor</th><th>Region</th><th class="n">SKUs</th><th class="n">Stockout risk</th><th></th></tr></thead><tbody id="dtb"></tbody></table></div></section>
+</div>
+<div class="pane" id="tab-cs" hidden>
+<section class="sec"><h2>WhatsApp CS queue &amp; SLA <span class="badge b-info">SAMPLE THREADS</span></h2><div class="cs" id="cs"></div></section>
+</div>
+<div class="pane" id="tab-exec" hidden>
+<h2 style="font-size:15px;margin:0 0 8px">Executive dashboard (12 metrics)</h2><div>
+<div class="card sumc" id="sumc"></div><div class="mt" id="mt"></div></div>
+<p class="note" id="rules"></p>
+<p class="note">Quarterly loss baseline from the case: ₹28–34 lakhs (₹18–22L stockouts + ₹10–12L overstock write-offs). Per-SKU rupee impact needs price data, which the seed does not include.</p>
+</div>
+<div class="pane" id="tab-sim" hidden>
+<div class="card sim">
+  <b>What-if</b>
+  <label>Demand change <input id="adj" type="range" min="-50" max="50" step="5" value="0"> <span class="num" id="adjv">0%</span></label>
+  <button id="reset">Reset</button>
+  <span class="tag">Simulation only: while it differs from the real plan, decisions and POs are disabled.</span>
+</div>
+<div id="banner"></div>
 <section class="sec"><h2>Stock depletion burn-down</h2><div class="card">
 <div class="bar"><label>SKU <select id="bsku"></select></label><label>Supplier lead time <select id="blead"><option value="1">1 wk</option><option value="2" selected>2 wks</option><option value="3">3 wks</option></select></label><span class="tag">Assumed lead time; the data has none.</span></div>
 <div id="burn"></div></div></section>
-
-<p class="note" id="rules"></p>
-<p class="note">Quarterly loss baseline from the case: ₹28–34 lakhs (₹18–22L stockouts + ₹10–12L overstock write-offs). Per-SKU rupee impact needs price data, which the seed does not include.</p>
+</div>
 </main>
 
 <div class="ov" id="ov"></div>
@@ -200,7 +219,7 @@ function render(){
   document.querySelectorAll('[data-r]').forEach(b=>b.onclick=()=>{open=b.dataset.r;tag=OV[open]?.tag||'';msg=ok='';drawer()});
   document.querySelectorAll('input[data-s]').forEach(b=>b.onchange=()=>{b.checked?sel.add(b.dataset.s):sel.delete(b.dataset.s);bar()});
   const g=D.config;$('rules').textContent=`Rules (Raghav): spike >${g.spike_threshold*100}% over 12-wk avg → reorder ${g.high_demand_multiplier}x · cover <${g.stockout_weeks} wks → reorder now · >${g.overstock_weeks} wks → pause · perishable ${g.perishable_min_weeks}–${g.perishable_max_weeks} wks · festival months +${g.festival_uplift*100}% demand. Anything outside the rules goes to review.`;
-  bar();mandate();exec();csq();ticker();dists();net();burnUi();if(fx>=0)setFx(fx);if(open)drawer();
+  bar();mandate();exec();csq();ticker();dists();net();burnUi();badges2();showTab(tab);if(fx>=0)setFx(fx);if(open)drawer();
 }
 function bar(){
   const n=[...sel].filter(s=>D.results.find(r=>r.sku===s&&actionable(r))).length,canDraft=D.zoho&&D.zoho.draft_enabled;
@@ -390,7 +409,7 @@ function startPause(el,aff,label){
 
 // ---- keyboard: focus, approve, edit, pause, help
 const rowsEl=()=>[...document.querySelectorAll('#tb tr.row')];
-function setFx(i){const rs=rowsEl();if(!rs.length)return;fx=Math.max(0,Math.min(rs.length-1,i));rs.forEach((r,j)=>r.classList.toggle('fx',j===fx));rs[fx].scrollIntoView({block:'nearest'})}
+function setFx(i){if(tab!=='demand')showTab('demand');const rs=rowsEl();if(!rs.length)return;fx=Math.max(0,Math.min(rs.length-1,i));rs.forEach((r,j)=>r.classList.toggle('fx',j===fx));rs[fx].scrollIntoView({block:'nearest'})}
 const fxSku=()=>{const r=rowsEl()[fx];return r&&r.querySelector('[data-r]').dataset.r};
 async function approve(){
   const s=fxSku(),r=s&&D.results.find(x=>x.sku===s);if(!r)return toast('Focus a row first (J / K).');
@@ -615,6 +634,36 @@ function csq(){
   document.querySelectorAll('.th').forEach(e=>e.onclick=()=>{csSel=e.dataset.t;csq()});
   $('ar').onclick=async()=>{const v=ST.autoresponder==='on'?'off':'on';await fetch('/api/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:'autoresponder',value:v})});ST.autoresponder=v;csq()};
   $('bm').onclick=()=>{SC.name='Missed scheme: [name]';scheme(t.distributor_id)};
+}
+
+// ---- tabs (the layout follows the control-tower prototype; every number still comes from the data)
+let tab=(location.hash||'#demand').slice(1);if(!['demand','mid','cs','exec','sim'].includes(tab))tab='demand';let MV=null,MVk='';
+function showTab(t){
+  tab=t;history.replaceState(null,'','#'+t);
+  document.querySelectorAll('.pane').forEach(p=>p.hidden=p.id!=='tab-'+t);
+  document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===t));
+  if(t==='mid')mvl();
+}
+document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>showTab(b.dataset.tab));
+function badges2(){
+  const A=D.anomalies,alert=A.regions.length||A.distributors.some(d=>d.churn_risk);$('tb-mid').style.display=alert?'':'none';
+  const od=CS?CS.threads.filter(t=>!t.off_hours&&t.age_min>CS.sla_minutes).length:0;const e=$('tb-cs');e.style.display=od?'':'none';e.textContent=od+' OVERDUE';
+}
+async function mvl(){
+  const k=scen+'|'+D.as_of;
+  if(!MV||MVk!==k){
+    $('mvl').innerHTML='<div class="card" style="padding:14px">Loading…</div>';
+    try{const[s,l]=await Promise.all([fetch('/api/recommendations').then(r=>r.json()),fetch('/api/recommendations?live=1'+(scen?'&scenario='+scen:'')).then(r=>r.json())]);MV={s,l};MVk=k}catch(e){$('mvl').innerHTML='<div class="card err" style="padding:14px">Could not load.</div>';return}
+  }
+  const{s,l}=MV,tot=r=>r.results.filter(actionable).reduce((a,x)=>a+x.recommended_qty,0),sq=Object.fromEntries(s.results.map(r=>[r.sku,r])),
+    ch=l.results.filter(r=>(actionable(sq[r.sku])?sq[r.sku].recommended_qty:0)!==(actionable(r)?r.recommended_qty:0)),A=l.anomalies,aff=l.open_pos.filter(p=>A.regions.some(g=>g.skus.includes(p.sku)));
+  $('mvl').innerHTML=`<div class="card" style="padding:14px;opacity:.85"><b>Monday snapshot</b> <span class="tag">${esc(s.as_of)} plan, no mid-week signal</span>
+    <div class="cmp" style="margin-top:10px"><div><span>Reorder now / reorder</span><b class="num">${s.results.filter(actionable).length} SKUs</b></div><div><span>Units to order</span><b class="num">${tot(s)}</b></div></div>
+    <div class="tag" style="margin-top:8px">Open PO units: ${s.open_pos.reduce((a,p)=>a+p.qty,0)} · stockout-risk SKUs: ${s.results.filter(r=>r.flags.includes('STOCKOUT_RISK')).length}</div></div>
+  <div class="card ${A.regions.length?'glow-warn':''}" style="padding:14px"><b>Live signals</b> ${A.simulated?'<span class="badge b-info">SIMULATED</span>':''} <span class="tag">latest mid-week regional shift applied</span>
+    <div class="cmp" style="margin-top:10px"><div><span>Regional shift</span><b class="num" style="${A.regions.length?'color:var(--bad)':''}">${A.regions.length?A.regions.map(g=>g.region+' '+g.change_pct+'%').join(', '):'none'}</b></div><div><span>Units to order (live)</span><b class="num">${tot(l)}</b></div></div>
+    <div class="tag" style="margin-top:8px">${aff.length} open PO(s) on affected SKUs${ch.length?` · quantity changes: ${ch.map(r=>`${esc(r.name.replace('Freshroots ',''))} ${actionable(sq[r.sku])?sq[r.sku].recommended_qty:0}→${actionable(r)?r.recommended_qty:0}`).join(', ')}`:' · no quantity changes'}</div>
+    <div class="tag">No live SAP feed: "live" = current stock and POs plus the latest mid-week signal in the sales data.</div></div>`;
 }
 
 load();

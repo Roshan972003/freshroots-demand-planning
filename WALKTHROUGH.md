@@ -38,3 +38,6 @@ Live app: https://freshroots-demand-planning-indol.vercel.app
 - **Pre-flight gate (Execute batch POs):** compares Monday's snapshot with live signals (the mid-week regional shift). If demand differs by more than 10%, single-click approval is blocked and you must confirm the adjusted order.
 - **Judgment capture:** overriding opens a modal for a reason tag and an optional switch that turns the override into a 30-day rule for that SKU's reorder quantity (removable).
 - **Rule inspector:** each SKU's drawer shows the four logic steps (4-vs-12-week, festival uplift, perishability window, final recommendation) with one-click approval.
+
+## Layout: tabs
+The app is laid out as five tabs (Demand planning, Mid-week signals, WhatsApp CS desk, Executive view, What-if & burn-down) under a sticky header that carries the mandate strip. The Mid-week tab adds a Monday-snapshot vs live-signals comparison computed from the data. Command menu entries jump between tabs.
