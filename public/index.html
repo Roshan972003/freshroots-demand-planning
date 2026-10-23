@@ -7,8 +7,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#f4f6f9;--panel:#fff;--inset:#e5e9f0;--ink:#0f172a;--mute:#64748b;--brand:#059669;--brandbg:#d1fae5;--warn:#b45309;--warnbg:#fef3c7;--bad:#b91c1c;--badbg:#fee2e2;--info:#1d4ed8;--infobg:#dbeafe;--shadow:0 1px 2px rgba(15,23,42,.06)}
-@media(prefers-color-scheme:dark){:root{--bg:#080b11;--panel:#111622;--inset:#1e2638;--ink:#f8fafc;--mute:#94a3b8;--brand:#10b981;--brandbg:#0c3b2c;--warn:#f59e0b;--warnbg:#3a2a08;--bad:#ef4444;--badbg:#3f1417;--info:#38bdf8;--infobg:#0c2a40;--shadow:0 1px 2px rgba(0,0,0,.4)}}
+:root{--bg:#f4f6f9;--panel:#fff;--inset:#e5e9f0;--ink:#0f172a;--mute:#64748b;--brand:#059669;--brandbg:#d1fae5;--warn:#b45309;--warnbg:#fef3c7;--bad:#b91c1c;--badbg:#fee2e2;--info:#1d4ed8;--infobg:#dbeafe;--hover:#e8edf4;--sky:#0369a1;--skybg:#e0f2fe;--vio:#6d28d9;--viobg:#ede9fe;--id:#0369a1;--shadow:0 1px 2px rgba(15,23,42,.06)}
+@media(prefers-color-scheme:dark){:root{--bg:#080b11;--panel:#111622;--inset:#1e2638;--hover:#182030;--ink:#f8fafc;--mute:#94a3b8;--brand:#10b981;--brandbg:#0c3b2c;--warn:#f59e0b;--warnbg:#3a2a08;--bad:#ef4444;--badbg:#3f1417;--info:#38bdf8;--infobg:#0c2a40;--sky:#0ea5e9;--skybg:#082f49;--vio:#8b5cf6;--viobg:#2a1d52;--id:#38bdf8;--shadow:0 1px 2px rgba(0,0,0,.4)}}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 "Plus Jakarta Sans",system-ui,sans-serif;letter-spacing:-.005em}
 .mono,.num{font-family:"JetBrains Mono",ui-monospace,monospace;font-variant-numeric:tabular-nums}
@@ -48,7 +48,21 @@ tr.row:hover td{background:color-mix(in srgb,var(--inset) 40%,transparent)}
 .err{color:var(--bad);margin-top:8px;font-weight:600}.okmsg{color:var(--brand);margin-top:8px;font-weight:600}
 svg{display:block;color:var(--brand)}
 .note{color:var(--mute);font-size:12px;margin-top:16px}
-header.top{position:sticky;top:0;z-index:20;display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center;justify-content:space-between;padding:10px 16px;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--inset)}
+/* Emerald Nocturne */
+::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--inset);border-radius:3px}::-webkit-scrollbar-thumb:hover{background:color-mix(in srgb,var(--inset) 60%,var(--mute))}
+*{scrollbar-width:thin;scrollbar-color:var(--inset) var(--bg)}
+.mono,.id{color:var(--id)}.num{color:var(--ink)}
+th{padding:8px 10px}td{padding:7px 10px}.card.wrap td .tag{font-size:11px}
+tr.row:hover td{background:var(--hover)}.th:hover,.th.on{background:var(--hover)}.th.on{box-shadow:inset 3px 0 var(--sky)}
+.b-sky{background:var(--skybg);color:var(--sky)}.b-vio{background:var(--viobg);color:var(--vio)}
+.badge.b-bad{box-shadow:0 0 10px -2px rgba(239,68,68,.45)}.badge.b-warn{box-shadow:0 0 10px -3px rgba(245,158,11,.4)}.badge.b-vio{box-shadow:0 0 10px -3px rgba(139,92,246,.5)}
+.kpi.glow-bad{box-shadow:0 0 22px -4px rgba(239,68,68,.35)}.kpi.glow-warn{box-shadow:0 0 22px -4px rgba(245,158,11,.3)}
+button.sky{background:var(--sky);border-color:var(--sky);color:#04131d}
+.drawer.vio{box-shadow:inset 0 0 0 1px var(--vio),0 0 28px -6px rgba(139,92,246,.45)}
+.kov{background:rgba(13,18,31,.9)}.kbox{box-shadow:0 24px 60px -12px rgba(0,0,0,.7)}
+.mono.num{color:var(--ink)}
+
+header.top{position:sticky;top:0;z-index:20;display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center;justify-content:space-between;padding:10px 16px;background:color-mix(in srgb,var(--bg) 80%,transparent);backdrop-filter:blur(12px);border-bottom:1px solid var(--inset)}
 .brand{display:flex;gap:10px;align-items:center}.logo{width:38px;height:38px;border-radius:11px;background:linear-gradient(135deg,var(--brand),#065f46);display:grid;place-items:center;box-shadow:0 0 18px -3px rgba(16,185,129,.35)}
 header.top h1{font-size:15px;letter-spacing:.01em}header.top .mand{margin:0;padding:6px 12px;flex:1 1 520px;gap:14px}header.top .mand>div{min-width:150px}
 .tabs{display:flex;gap:4px;overflow-x:auto;padding:8px 16px;background:var(--panel);border-bottom:1px solid var(--inset)}
@@ -205,7 +219,7 @@ function render(){
   $('adjv').textContent=(adj>0?'+':'')+adj+'%';
   $('banner').innerHTML=simulating()?`<div class="banner">Simulation active: ${adj?`demand ${adj>0?'+':''}${adj}%`:''}${adj&&fest!==D.calendar_festival?', ':''}${fest!==D.calendar_festival?`festival uplift ${fest?'forced on':'forced off'}`:''}. Decisions and POs are disabled until you reset.</div>`:'';
   const K=[['all','Active SKUs monitored',R.length,'ok'],['STOCKOUT','Stockout risk',so,'bad'],['OVERSTOCK','Overstock risk',ovr,'warn'],['HIGH','High demand',hd,'warn'],['REVIEW','Needs review',c('REVIEW'),''],];
-  $('kpis').innerHTML=K.map(([k,l,n,cl])=>`<div class="card kpi ${cl} ${filter===k?'on':''}" data-k="${k}"><b class="num">${n}</b><span>${l}</span></div>`).join('')+
+  $('kpis').innerHTML=K.map(([k,l,n,cl])=>`<div class="card kpi ${cl} ${filter===k?'on':''} ${k==='STOCKOUT'&&n?'glow-bad':''} ${k==='OVERSTOCK'&&n?'glow-warn':''}" data-k="${k}"><b class="num">${n}</b><span>${l}</span></div>`).join('')+
     `<div class="card kpi static"><b class="num">${ds.length?Math.round(ovn/ds.length*100)+'%':'–'}</b><span>Override rate (${ovn} of ${ds.length} decided)</span></div>`;
   document.querySelectorAll('.kpi[data-k]').forEach(e=>e.onclick=()=>{filter=filter===e.dataset.k||e.dataset.k==='all'?null:e.dataset.k;render()});
   const pass=r=>!filter||(filter==='STOCKOUT'&&r.flags.includes('STOCKOUT_RISK'))||(filter==='OVERSTOCK'&&r.flags.includes('OVERSTOCK_RISK'))||(filter==='HIGH'&&r.flags.includes('HIGH_DEMAND'))||(filter==='REVIEW'&&r.status==='REVIEW');
@@ -214,7 +228,7 @@ function render(){
     return `<tr class="row"><td><input type="checkbox" data-s="${r.sku}" ${sel.has(r.sku)?'checked':''} ${actionable(r)&&!simulating()?'':'disabled'}></td>
     <td><b>${esc(r.name.replace('Freshroots ',''))}</b><br><span class="id mono">${r.sku}</span> <span class="tag">${esc(r.category)}${r.perishability==='High'?' · <b>perishable</b>':''}</span></td>
     <td class="n num">${r.stock??'–'}</td><td class="n num">${r.weeks_cover??'–'}</td><td>${r.spike_pct==null?'–':trend(r.spike_pct)}</td>
-    <td>${badges(r)}</td><td>${ACT[r.status]}${r.planner_rule?' <span class="badge b-info">30-DAY RULE</span>':''}${o?`<br><span class="tag">${o.decision==='accepted'?'✓ accepted':'✎ overridden → '+esc(o.final_qty)+(o.tag?' · '+esc(o.tag):'')}</span>`:''}</td>
+    <td>${badges(r)}</td><td>${ACT[r.status]}${r.planner_rule?' <span class="badge b-vio">30-DAY RULE</span>':''}${o?`<br><span class="tag">${o.decision==='accepted'?'✓ accepted':'<span style="color:var(--vio)">✎ overridden → '+esc(o.final_qty)+(o.tag?' · '+esc(o.tag):'')+'</span>'}</span>`:''}</td>
     <td class="n num">${r.recommended_qty||'–'}</td><td><button data-r="${r.sku}">Review</button></td></tr>`}).join('');
   document.querySelectorAll('[data-r]').forEach(b=>b.onclick=()=>{open=b.dataset.r;tag=OV[open]?.tag||'';msg=ok='';drawer()});
   document.querySelectorAll('input[data-s]').forEach(b=>b.onchange=()=>{b.checked?sel.add(b.dataset.s):sel.delete(b.dataset.s);bar()});
@@ -253,7 +267,7 @@ function drawer(){
   <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap"><button id="ovr" ${dis?'disabled':''}>Override</button>${o?'<button id="clr">Clear decision</button>':''}
   ${D.zoho&&D.zoho.draft_enabled&&o&&o.final_qty>0?`<button id="po" ${dis?'disabled':''}>Create draft PO (${esc(o.final_qty)})</button>`:''}</div>
   ${msg?`<div class="err">${esc(msg)}</div>`:''}${ok?`<div class="okmsg">${esc(ok)}</div>`:''}`;
-  $('dr').classList.add('on');$('ov').classList.add('on');
+  $('dr').classList.add('on');$('ov').classList.add('on');$('dr').classList.toggle('vio',!!(o&&o.decision==='overridden')||!!r.planner_rule);
   $('cl').onclick=closeDr;
   const chip=()=>{const v=parseInt($('fq').value,10);if(isNaN(v)){$('dchip').innerHTML='';return}const d=v-recQ;$('dq').textContent=v+' units';
     $('dchip').innerHTML=d===0?'<span class="badge b-info">no change</span>':`<span class="badge ${d>0?'b-ok':'b-bad'}">${d>0?'+':'−'}${Math.abs(d)} units</span>`};
@@ -353,7 +367,7 @@ function schemeUi(){
   <div class="cmp" style="margin-top:8px"><label class="tag">Expiry date<br><input type="date" id="se" value="${esc(SC.expiry)}"></label>
   <label class="tag">Target SKU<br><select id="ss">${skus.map(r=>`<option value="${r.sku}" ${r.sku===SC.sku?'selected':''}>${esc(r.name.replace('Freshroots ',''))}</option>`).join('')}</select></label></div>
   <h3>WhatsApp preview</h3><div class="wa"><div class="t">to ${esc(ds[0]?ds[0].name:'…')}${ds.length>1?` +${ds.length-1} more (name filled per recipient)`:''}</div><div class="bub" id="wp">${esc(schemeMsg())}</div></div>
-  <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap"><button class="p" id="cp">Copy message</button><button id="rc">Download recipients (CSV)</button></div>
+  <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap"><button class="sky" id="cp">Copy message</button><button id="rc">Download recipients (CSV)</button></div>
   <p class="tag">Sending is not connected. It needs a WhatsApp Business API account; until then, copy the message or download the list.</p><div id="smsg"></div>`);
   document.querySelectorAll('[data-d]').forEach(c=>c.onchange=()=>{c.checked?SC.ds.add(c.dataset.d):SC.ds.delete(c.dataset.d);schemeUi()});
   $('sn').oninput=e=>{SC.name=e.target.value;$('wp').textContent=schemeMsg()};
@@ -490,7 +504,7 @@ function node(id){
   ${d.churn_risk?`<div class="banner" style="margin-top:10px">Churn risk: order volume ${d.change_pct}% vs the 4-week average${D.anomalies.simulated?' (simulated)':''}.</div>`:''}
   <div class="cmp" style="margin-top:12px"><div><span>Order volume vs 4-wk avg</span><b class="num">${d.change_pct>0?'+':''}${d.change_pct}%</b></div><div><span>SKUs / stockout risk</span><b class="num">${rs.length} / ${rs.filter(r=>r.flags.includes('STOCKOUT_RISK')).length}</b></div></div>
   <h3>SKUs</h3><ul>${rs.map(r=>`<li>${esc(r.name.replace('Freshroots ',''))} <span class="mono id">${r.sku}</span> · ${r.weeks_cover} wks</li>`).join('')}</ul>
-  <div style="margin-top:14px"><button class="p" id="bc">Broadcast WhatsApp Scheme Notification</button></div>`);
+  <div style="margin-top:14px"><button class="sky" id="bc">Broadcast WhatsApp Scheme Notification</button></div>`);
   $('bc').onclick=()=>scheme(id);
 }
 
@@ -621,16 +635,16 @@ function mandate(){
 function csq(){
   if(!CS){$('cs').innerHTML='<div class="card" style="padding:12px">Sample threads unavailable.</div>';return}
   const dn=id=>(D.anomalies.distributors.find(d=>d.distributor_id===id)||{name:id}).name,sla=CS.sla_minutes;
-  const badge=t=>t.off_hours?'<span class="badge b-info">7pm / Sunday hold</span>':t.age_min>sla?`<span class="badge b-bad">Overdue ${t.age_min-sla}m</span>`:`<span class="badge b-ok">${t.age_min}m</span>`;
+  const badge=t=>t.off_hours?'<span class="badge b-sky">7pm / Sunday hold</span>':t.age_min>sla?`<span class="badge b-bad">Overdue ${t.age_min-sla}m</span>`:`<span class="badge b-sky">${t.age_min}m</span>`;
   const sorted=[...CS.threads].sort((a,b)=>(b.off_hours?-1:0)-(a.off_hours?-1:0)||b.age_min-a.age_min);
   if(!csSel)csSel=sorted[0].id;const t=CS.threads.find(x=>x.id===csSel),p=CS.profiles[t.distributor_id]||{},d=D.anomalies.distributors.find(x=>x.distributor_id===t.distributor_id);
-  $('cs').innerHTML=`<div class="card">${sorted.map(x=>`<div class="th ${x.id===csSel?'on':''}" data-t="${x.id}"><div style="display:flex;justify-content:space-between;gap:6px;flex-wrap:wrap"><span><span class="badge b-warn">${esc(x.tag)}</span> <b>${esc(dn(x.distributor_id))}</b></span>${badge(x)}</div><div class="tag" style="margin-top:3px">${esc(x.text)}</div></div>`).join('')}</div>
-  <div class="card" style="padding:14px"><b>${esc(dn(t.distributor_id))}</b> <span class="badge b-warn">${esc(t.tag)}</span><div class="wa" style="margin:8px 0"><div class="bub" style="background:#1e293b">${esc(t.text)}</div></div>
+  $('cs').innerHTML=`<div class="card">${sorted.map(x=>`<div class="th ${x.id===csSel?'on':''}" data-t="${x.id}"><div style="display:flex;justify-content:space-between;gap:6px;flex-wrap:wrap"><span><span class="badge b-sky">${esc(x.tag)}</span> <b>${esc(dn(x.distributor_id))}</b></span>${badge(x)}</div><div class="tag" style="margin-top:3px">${esc(x.text)}</div></div>`).join('')}</div>
+  <div class="card" style="padding:14px"><b>${esc(dn(t.distributor_id))}</b> <span class="badge b-sky">${esc(t.tag)}</span><div class="wa" style="margin:8px 0"><div class="bub" style="background:#1e293b">${esc(t.text)}</div></div>
   <div class="cmp"><div><span>Account value (sample)</span><b class="num">₹${p.account_value_lakh??'–'}L/yr</b></div><div><span>Active orders (sample)</span><b class="num">${p.active_orders??'–'}</b></div></div>
   <div class="tag" style="margin-top:8px">Credit note (sample): ${esc(p.credit_note||'–')} · 4-week volume: ${d?(d.change_pct>0?'+':'')+d.change_pct+'%':'–'} · SLA: ${sla} min in working hours</div>
   <label class="sw ${ST.autoresponder==='on'?'on':''}" id="ar" style="margin-top:12px"><i></i><span>Off-hours auto-responder (after 7 PM and Sundays)</span></label>
   <div class="tag">A setting only: sending replies needs the WhatsApp Business API.</div>
-  <div style="margin-top:10px"><button class="p" id="bm">Broadcast Missed Scheme Notification</button></div></div>`;
+  <div style="margin-top:10px"><button class="sky" id="bm">Broadcast Missed Scheme Notification</button></div></div>`;
   document.querySelectorAll('.th').forEach(e=>e.onclick=()=>{csSel=e.dataset.t;csq()});
   $('ar').onclick=async()=>{const v=ST.autoresponder==='on'?'off':'on';await fetch('/api/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:'autoresponder',value:v})});ST.autoresponder=v;csq()};
   $('bm').onclick=()=>{SC.name='Missed scheme: [name]';scheme(t.distributor_id)};
