@@ -91,17 +91,25 @@ def stock_on_hand(item_map=None):
 
 def open_po_units(item_map=None):
     """sku code -> units ordered but not yet received, across open purchase orders."""
+    out = {}
+    for d in open_po_details(item_map):
+        out[d["sku"]] = out.get(d["sku"], 0) + d["qty"]
+    return out
+
+def open_po_details(item_map=None):
+    """[{po, sku, qty}] for each open purchase order line with units still to receive."""
     item_map = item_map or items()
     by_id = {i["item_id"]: sku for sku, i in item_map.items()}
-    out = {}
+    out = []
     for status in [s.strip() for s in _env("ZOHO_OPEN_PO_STATUSES", "open").split(",") if s.strip()]:
         for po in _pages("purchaseorders", "purchaseorders", {"status": status}):
             detail = _api("GET", f"purchaseorders/{po['purchaseorder_id']}").get("purchaseorder", {})
+            number = po.get("purchaseorder_number") or detail.get("purchaseorder_number") or po["purchaseorder_id"]
             for ln in detail.get("line_items", []):
                 sku = by_id.get(ln.get("item_id")) or ln.get("sku")
                 left = float(ln.get("quantity") or 0) - float(ln.get("quantity_received") or 0)
                 if sku and left > 0:
-                    out[sku] = out.get(sku, 0) + int(left)
+                    out.append(dict(po=number, sku=sku, qty=int(left)))
     return out
 
 def _vendor_for(sku, data_dir):

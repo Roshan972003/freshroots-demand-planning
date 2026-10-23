@@ -21,3 +21,8 @@ Live app: https://freshroots-demand-planning-indol.vercel.app
 - **Festival toggle** (top right) re-runs the rules with the +25% uplift forced on or off, and **What-if** shifts demand from -50% to +50%. Both are simulations: decisions and POs are disabled until you reset.
 - **Review** opens a slide-over with the reasons, the 12-week chart, a before/after cover preview, accept/override with reason tags (competitor scheme, distributor onboarding, unseasonal weather, trade promotion, new launch, distributor anomaly, other), and a draft-PO button.
 - **Select actionable, then Accept & create draft POs** drafts POs for the selected SKUs in one go (demo sandbox unless real Zoho is connected). **Export proposals (CSV)** downloads the same list.
+
+## Anomaly ticker, scheme alerts and burn-down
+- **Ticker (under the header):** compares each region's latest week with its prior 4-week average. If a region moves more than 20%, it names the region and the open POs on that region's SKUs, and **Review & Hold Purchase Order** opens a drawer that logs a hold request for procurement (the tool never edits a PO). The seed has no real shift, so use **Simulate a Maharashtra -22% shift**; the alert is tagged SIMULATED.
+- **Distributors table, Send Scheme Alert:** pick recipients, scheme name, expiry and target SKU, and see a WhatsApp-style preview. You can copy the message or download the recipient list. It does not send: that needs a WhatsApp Business API account.
+- **Burn-down:** projected weeks of cover over 8 weeks for any SKU (default: a perishable at risk), with red, green and amber bands taken from that SKU's own thresholds. Dashed = no new order, solid = with the recommended order at an assumed lead time.

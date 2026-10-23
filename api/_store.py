@@ -94,3 +94,22 @@ def list_mock_pos():
                  "SELECT id, vendor_id, lines FROM mock_pos ORDER BY created_at", fetch=True)
     return [{"purchaseorder_id": r[0], "purchaseorder_number": "PO-" + r[0][-8:], "status": "draft",
              "vendor_name": r[1], "line_items": json.loads(r[2])} for r in rows]
+
+
+# --- PO hold requests: a logged recommendation for procurement; the tool never edits POs in Zoho -----------
+HOLD_SCHEMA = """CREATE TABLE IF NOT EXISTS po_holds (
+    id TEXT PRIMARY KEY, po TEXT, sku TEXT, qty INTEGER, reason TEXT,
+    requested_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)"""
+
+def save_holds(rows, reason):
+    import time
+    n = int(time.time() * 1000)
+    for i, r in enumerate(rows):
+        _run2(HOLD_SCHEMA, "INSERT INTO po_holds (id, po, sku, qty, reason) VALUES (%s,%s,%s,%s,%s) ON CONFLICT (id) DO NOTHING",
+              "INSERT OR IGNORE INTO po_holds (id, po, sku, qty, reason) VALUES (?,?,?,?,?)",
+              (f"{n}-{i}", r["po"], r["sku"], int(r["qty"]), reason))
+
+def list_holds():
+    rows = _run2(HOLD_SCHEMA, "SELECT po, sku, qty, reason, requested_at::text FROM po_holds ORDER BY requested_at DESC LIMIT 50",
+                 "SELECT po, sku, qty, reason, requested_at FROM po_holds ORDER BY requested_at DESC LIMIT 50", fetch=True)
+    return [dict(zip(("po", "sku", "qty", "reason", "requested_at"), r)) for r in rows]

@@ -48,6 +48,15 @@ tr.row:hover td{background:color-mix(in srgb,var(--inset) 40%,transparent)}
 .err{color:var(--bad);margin-top:8px;font-weight:600}.okmsg{color:var(--brand);margin-top:8px;font-weight:600}
 svg{display:block;color:var(--brand)}
 .note{color:var(--mute);font-size:12px;margin-top:16px}
+.tick{padding:10px 14px;border-radius:10px;margin-bottom:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;border:1px solid}
+.tick.warn{background:color-mix(in srgb,var(--warnbg) 70%,transparent);border-color:color-mix(in srgb,var(--warn) 40%,transparent);color:var(--ink)}
+.tick.warn b{color:var(--warn)}.tick.ok{background:var(--panel);border-color:var(--inset);color:var(--mute)}
+.sec{margin-top:18px}.sec h2{font-size:15px;margin:0 0 8px}.sec .card{padding:12px 14px}
+.wa{background:#0b0f17;border-radius:12px;padding:14px;margin-top:6px}.wa .t{font-size:11px;color:#94a3b8;margin-bottom:8px}
+.wa .bub{background:#065f46;color:#ecfdf5;border-radius:12px 12px 12px 2px;padding:10px 12px;white-space:pre-wrap;max-width:92%;font-size:13px;line-height:1.5}
+.dr-list label{display:flex;gap:8px;align-items:center;padding:4px 0}
+select,input[type=date]{font:inherit;padding:6px 9px;border-radius:8px;border:1px solid var(--inset);background:var(--bg);color:var(--ink)}
+
 </style>
 </head>
 <body>
@@ -56,6 +65,7 @@ svg{display:block;color:var(--brand)}
   <div><h1>Freshroots Demand Planning Control Tower</h1><div class="sub" id="sub">Loading…</div></div>
   <div class="ctl"><span class="sw" id="fest" role="switch" tabindex="0"><i></i><span id="festLabel">Festival uplift +25%</span></span></div>
 </header>
+<div id="ticker"></div>
 
 <div class="kpis" id="kpis"></div>
 
@@ -78,15 +88,23 @@ svg{display:block;color:var(--brand)}
 <thead><tr><th></th><th>SKU</th><th class="n">Stock</th><th class="n">Cover (wks)</th><th>4-wk vs 12-wk</th><th>Status</th><th>System action</th><th class="n">Qty</th><th>Planner</th></tr></thead>
 <tbody id="tb"></tbody></table></div>
 
+<section class="sec"><h2>Distributors</h2><div class="card wrap"><table>
+<thead><tr><th>Distributor</th><th>Region</th><th class="n">SKUs</th><th class="n">Stockout risk</th><th></th></tr></thead><tbody id="dtb"></tbody></table></div></section>
+
+<section class="sec"><h2>Stock depletion burn-down</h2><div class="card">
+<div class="bar"><label>SKU <select id="bsku"></select></label><label>Supplier lead time <select id="blead"><option value="1">1 wk</option><option value="2" selected>2 wks</option><option value="3">3 wks</option></select></label><span class="tag">Assumed lead time; the data has none.</span></div>
+<div id="burn"></div></div></section>
+
 <p class="note" id="rules"></p>
 <p class="note">Quarterly loss baseline from the case: ₹28–34 lakhs (₹18–22L stockouts + ₹10–12L overstock write-offs). Per-SKU rupee impact needs price data, which the seed does not include.</p>
 </main>
 
 <div class="ov" id="ov"></div>
 <aside class="drawer" id="dr" aria-label="SKU review"></aside>
+<aside class="drawer" id="dr2" aria-label="Panel"></aside>
 
 <script>
-let D=null,OV={},filter=null,open=null,sel=new Set(),tag='',msg='',ok='',fest=null,adj=0;
+let D=null,OV={},filter=null,open=null,sel=new Set(),tag='',msg='',ok='',fest=null,adj=0,shift=false,burnSku=null,lead=2,SC={name:'',expiry:'',sku:'',ds:new Set()};
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const TAGS=["Competitor scheme","Distributor onboarding","Unseasonal weather","Trade promotion","New launch","Distributor anomaly","Other"];
@@ -95,7 +113,7 @@ const simulating=()=>adj!==0||(D&&fest!==null&&fest!==D.calendar_festival);
 
 async function load(){
   try{
-    const q=new URLSearchParams();if(fest!==null)q.set('festival',fest?'1':'0');if(adj)q.set('adj',adj);
+    const q=new URLSearchParams();if(fest!==null)q.set('festival',fest?'1':'0');if(adj)q.set('adj',adj);if(shift)q.set('scenario','shift');
     D=await (await fetch('/api/recommendations?'+q)).json();if(D.error)throw new Error(D.error);
     if(fest===null)fest=D.festival;
     OV={};(await (await fetch('/api/overrides?as_of='+D.as_of)).json()).forEach(x=>OV[x.sku]=x);
@@ -139,7 +157,7 @@ function render(){
   document.querySelectorAll('[data-r]').forEach(b=>b.onclick=()=>{open=b.dataset.r;tag=OV[open]?.tag||'';msg=ok='';drawer()});
   document.querySelectorAll('input[data-s]').forEach(b=>b.onchange=()=>{b.checked?sel.add(b.dataset.s):sel.delete(b.dataset.s);bar()});
   const g=D.config;$('rules').textContent=`Rules (Raghav): spike >${g.spike_threshold*100}% over 12-wk avg → reorder ${g.high_demand_multiplier}x · cover <${g.stockout_weeks} wks → reorder now · >${g.overstock_weeks} wks → pause · perishable ${g.perishable_min_weeks}–${g.perishable_max_weeks} wks · festival months +${g.festival_uplift*100}% demand. Anything outside the rules goes to review.`;
-  bar();if(open)drawer();
+  bar();ticker();dists();burnUi();if(open)drawer();
 }
 function bar(){
   const n=[...sel].filter(s=>D.results.find(r=>r.sku===s&&actionable(r))).length,canDraft=D.zoho&&D.zoho.draft_enabled;
@@ -176,7 +194,7 @@ function drawer(){
   if($('clr'))$('clr').onclick=async()=>{await fetch(`/api/overrides?as_of=${D.as_of}&sku=${r.sku}`,{method:'DELETE'});delete OV[r.sku];msg=ok='';render()};
   if($('po'))$('po').onclick=()=>draftPo(r.sku,o.final_qty);
 }
-function closeDr(){open=null;$('dr').classList.remove('on');$('ov').classList.remove('on')}
+function closeDr(){open=null;$('dr').classList.remove('on');$('dr2').classList.remove('on');$('ov').classList.remove('on')}
 $('ov').onclick=closeDr;document.addEventListener('keydown',e=>{if(e.key==='Escape')closeDr()});
 async function post(body){const res=await fetch('/api/overrides',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});return[res.ok,await res.json()]}
 async function refreshOv(){OV={};(await (await fetch('/api/overrides?as_of='+D.as_of)).json()).forEach(x=>OV[x.sku]=x)}
@@ -214,6 +232,96 @@ $('csv').onclick=()=>{
 $('fest').onclick=()=>{fest=!fest;load()};$('fest').onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();fest=!fest;load()}};
 let t;$('adj').oninput=e=>{adj=+e.target.value;$('adjv').textContent=(adj>0?'+':'')+adj+'%';clearTimeout(t);t=setTimeout(load,250)};
 $('reset').onclick=()=>{adj=0;$('adj').value=0;fest=D?D.calendar_festival:null;load()};
+// ---- mid-week anomaly ticker + hold drawer
+function ticker(){
+  const a=D.anomalies,reg=a.regions[0],el=$('ticker');
+  if(!reg){el.innerHTML=`<div class="tick ok">No regional demand shift beyond ±${a.threshold_pct}% vs the 4-week average. <button id="simShift">Simulate a Maharashtra −22% shift</button></div>`;$('simShift').onclick=()=>{shift=true;load()};return}
+  const aff=D.open_pos.filter(p=>reg.skus.includes(p.sku));
+  el.innerHTML=`<div class="tick warn"><span><b>Alert:</b> demand shift detected in ${esc(reg.region)} region (${reg.change_pct}% order volume vs 4-week average)${a.simulated?' <span class="badge b-info">SIMULATED</span>':''}. ${aff.length} open PO${aff.length===1?'':'s'} affected.</span>${aff.length?'<button class="p" id="holdBtn">Review &amp; Hold Purchase Order</button>':''}${a.simulated?'<button id="simOff">End simulation</button>':''}</div>`;
+  if($('holdBtn'))$('holdBtn').onclick=()=>holdDrawer(reg,aff);
+  if($('simOff'))$('simOff').onclick=()=>{shift=false;load()};
+}
+function panel(html){$('dr2').innerHTML=html;$('dr2').classList.add('on');$('ov').classList.add('on');$('dr').classList.remove('on');if($('cl2'))$('cl2').onclick=closeDr}
+async function holdDrawer(reg,aff){
+  const nm=s=>(D.results.find(r=>r.sku===s)||{name:s}).name.replace('Freshroots ','');
+  panel(`<div style="display:flex;justify-content:space-between"><h2>Review &amp; hold purchase orders</h2><button id="cl2">Close</button></div>
+  <div class="tag">${esc(reg.region)}: ${reg.change_pct}% order volume vs 4-week average${D.anomalies.simulated?' (simulated)':''}</div>
+  <h3>Open POs on affected SKUs</h3><ul>${aff.map(p=>`<li><span class="mono">${esc(p.po)}</span> · ${esc(nm(p.sku))} · <span class="num">${p.qty}</span> units</li>`).join('')}</ul>
+  <h3>Reason</h3><input type="text" id="hr" maxlength="300" value="Demand shift in ${esc(reg.region)} (${reg.change_pct}%)">
+  <div style="margin-top:12px"><button class="p" id="hok">Log hold request</button></div>
+  <p class="tag">This records a request for procurement to hold these POs. The tool does not change purchase orders in Zoho; a person does that.</p><div id="hmsg"></div>`);
+  $('hok').onclick=async()=>{
+    const res=await fetch('/api/holds',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pos:aff,reason:$('hr').value})});
+    const j=await res.json();$('hmsg').innerHTML=res.ok?`<div class="okmsg">Logged ${j.count} hold request(s) for procurement.</div>`:`<div class="err">${esc(j.error||'Failed')}</div>`;
+  };
+}
+
+// ---- distributors + scheme broadcast
+function dists(){
+  const m={};D.results.forEach(r=>{(m[r.distributor_id]=m[r.distributor_id]||{id:r.distributor_id,name:r.distributor,region:r.region,skus:[]}).skus.push(r)});
+  window._d=Object.values(m);
+  $('dtb').innerHTML=_d.map(d=>`<tr><td><b>${esc(d.name)}</b><br><span class="id mono">${esc(d.id)}</span></td><td>${esc(d.region)}</td><td class="n num">${d.skus.length}</td>
+  <td class="n num">${d.skus.filter(r=>r.flags.includes('STOCKOUT_RISK')).length}</td><td><button data-sc="${d.id}">Send Scheme Alert</button></td></tr>`).join('');
+  document.querySelectorAll('[data-sc]').forEach(b=>b.onclick=()=>scheme(b.dataset.sc));
+}
+function scheme(id){
+  SC.ds=new Set([id]);if(!SC.expiry){const d=new Date(Date.now()+7*864e5);SC.expiry=d.toISOString().slice(0,10)}schemeUi();
+}
+function schemeMsg(){
+  const ds=_d.filter(d=>SC.ds.has(d.id)),sk=D.results.find(r=>r.sku===SC.sku);
+  return `Hi ${ds[0]?ds[0].name:'[Distributor]'},\nNew Freshroots scheme: *${SC.name||'[Scheme name]'}* on ${sk?sk.name.replace('Freshroots ',''):'[Target SKU]'}.\nRegister by *${SC.expiry||'[Expiry date]'}* to qualify.\nReply YES to confirm.`;
+}
+function schemeUi(){
+  const ds=_d.filter(d=>SC.ds.has(d.id)),skus=D.results.filter(r=>SC.ds.has(r.distributor_id));
+  if(!skus.find(r=>r.sku===SC.sku))SC.sku=skus[0]?skus[0].sku:'';
+  panel(`<div style="display:flex;justify-content:space-between"><h2>Send scheme alert</h2><button id="cl2">Close</button></div>
+  <h3>Recipients</h3><div class="dr-list">${_d.map(d=>`<label><input type="checkbox" data-d="${d.id}" ${SC.ds.has(d.id)?'checked':''}> ${esc(d.name)} <span class="tag">(${esc(d.region)})</span></label>`).join('')}</div>
+  <div class="tag"><b>${ds.length}</b> distributor${ds.length===1?'':'s'}${ds.length?' in '+[...new Set(ds.map(d=>d.region))].join(' & '):''}</div>
+  <h3>Scheme</h3><input type="text" id="sn" placeholder="Scheme name" value="${esc(SC.name)}">
+  <div class="cmp" style="margin-top:8px"><label class="tag">Expiry date<br><input type="date" id="se" value="${esc(SC.expiry)}"></label>
+  <label class="tag">Target SKU<br><select id="ss">${skus.map(r=>`<option value="${r.sku}" ${r.sku===SC.sku?'selected':''}>${esc(r.name.replace('Freshroots ',''))}</option>`).join('')}</select></label></div>
+  <h3>WhatsApp preview</h3><div class="wa"><div class="t">to ${esc(ds[0]?ds[0].name:'…')}${ds.length>1?` +${ds.length-1} more (name filled per recipient)`:''}</div><div class="bub" id="wp">${esc(schemeMsg())}</div></div>
+  <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap"><button class="p" id="cp">Copy message</button><button id="rc">Download recipients (CSV)</button></div>
+  <p class="tag">Sending is not connected. It needs a WhatsApp Business API account; until then, copy the message or download the list.</p><div id="smsg"></div>`);
+  document.querySelectorAll('[data-d]').forEach(c=>c.onchange=()=>{c.checked?SC.ds.add(c.dataset.d):SC.ds.delete(c.dataset.d);schemeUi()});
+  $('sn').oninput=e=>{SC.name=e.target.value;$('wp').textContent=schemeMsg()};
+  $('se').oninput=e=>{SC.expiry=e.target.value;$('wp').textContent=schemeMsg()};
+  $('ss').onchange=e=>{SC.sku=e.target.value;$('wp').textContent=schemeMsg()};
+  $('cp').onclick=async()=>{try{await navigator.clipboard.writeText(schemeMsg());$('smsg').innerHTML='<div class="okmsg">Copied.</div>'}catch(e){$('smsg').innerHTML='<div class="err">Copy blocked by the browser; select the text instead.</div>'}};
+  $('rc').onclick=()=>{
+    const rows=ds.map(d=>{const sv=SC.ds;SC.ds=new Set([d.id]);const m=schemeMsg();SC.ds=sv;return[d.id,d.name,d.region,m]});
+    const t=[['Distributor_ID','Name','Region','Message'],...rows].map(l=>l.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\n');
+    const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([t],{type:'text/csv'}));a.download='scheme_recipients.csv';a.click();
+  };
+}
+
+// ---- burn-down chart
+function burnUi(){
+  const sel=$('bsku');
+  if(!sel.options.length||sel.dataset.n!==String(D.results.length)){
+    sel.innerHTML=D.results.map(r=>`<option value="${r.sku}">${esc(r.name.replace('Freshroots ',''))}${r.perishability==='High'?' (perishable)':''}</option>`).join('');sel.dataset.n=D.results.length;
+    if(!burnSku){const p=D.results.find(r=>r.perishability==='High'&&r.flags.includes('STOCKOUT_RISK'))||D.results.find(r=>r.perishability==='High')||D.results[0];burnSku=p.sku}
+  }
+  sel.value=burnSku;$('blead').value=lead;sel.onchange=e=>{burnSku=e.target.value;burnUi()};$('blead').onchange=e=>{lead=+e.target.value;burnUi()};
+  const r=D.results.find(x=>x.sku===burnSku);if(!r||!r.demand_rate){$('burn').textContent='No data for this SKU.';return}
+  const R=r.demand_rate,T=8,lo=r.min_weeks,hi=r.max_weeks,rec=r.recommended_qty||0,on=r.on_order||0;
+  const run=(add)=>{let s=r.stock,out=[s/R];for(let t=1;t<=T;t++){s=Math.max(0,s-R);if(t===1)s+=on;if(add&&t===lead)s+=rec;out.push(s/R)}return out};
+  const A=run(false),B=run(true),ymax=Math.max(hi*1.5,lo*2,...A,...B)*1.05;
+  const W=720,H=260,L=44,Rt=12,Tp=10,Bt=32,x=t=>L+t/T*(W-L-Rt),y=v=>Tp+(1-Math.min(v,ymax)/ymax)*(H-Tp-Bt);
+  const band=(a,b,c)=>`<rect x="${L}" y="${y(b)}" width="${W-L-Rt}" height="${y(a)-y(b)}" style="fill:var(${c})"/>`;
+  const line=(v,st)=>`<polyline fill="none" style="${st}" stroke-width="2.5" points="${v.map((q,t)=>x(t)+','+y(q)).join(' ')}"/>`;
+  const so=v=>{const i=v.findIndex(q=>q<=0.001);return i>0?i:null},sa=so(A),sb=so(B);
+  const ticks=[0,lo,hi].concat(ymax>hi*1.4?[Math.round(ymax)]:[]);
+  $('burn').innerHTML=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;color:var(--ink)" role="img" aria-label="Projected weeks of cover over 8 weeks">
+  ${band(0,lo,'--badbg')}${band(lo,hi,'--brandbg')}${band(hi,ymax,'--warnbg')}
+  ${ticks.map(v=>`<text x="${L-6}" y="${y(v)+4}" text-anchor="end" font-size="11" style="fill:var(--mute)" class="mono">${+v.toFixed?+(+v).toFixed(1):v}</text>`).join('')}
+  ${[0,2,4,6,8].map(t=>`<text x="${x(t)}" y="${H-12}" text-anchor="middle" font-size="11" style="fill:var(--mute)" class="mono">wk ${t}</text>`).join('')}
+  ${line(A,'stroke:var(--mute);stroke-dasharray:5 4')}${line(B,'stroke:var(--brand)')}
+  ${sa?`<circle cx="${x(sa)}" cy="${y(0)}" r="5" style="fill:var(--bad)"/>`:''}</svg>
+  <div class="tag"><span style="color:var(--bad)">■</span> below ${lo} wks (stockout risk) · <span style="color:var(--brand)">■</span> ${lo}–${hi} wks (safe) · <span style="color:var(--warn)">■</span> above ${hi} wks (overstock) · dashed = no new order · solid = recommended ${rec} units arriving week ${lead}${on?` · ${on} units on order assumed week 1`:''}</div>
+  <div style="margin-top:6px">${sa?`Without a new order this SKU runs out in <b>week ${sa}</b>.`:'No stockout within 8 weeks without a new order.'} ${rec?(sb?`Even with the recommended order it runs out in <b>week ${sb}</b>: a ${lead}-week lead time is too slow.`:'With the recommended order it stays in stock.'):''}</div>`;
+}
+
 load();
 </script>
 </body>

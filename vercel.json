@@ -8,6 +8,9 @@
     },
     "api/zoho_po.py": {
       "includeFiles": "{api/_zoho.py,api/_mock_zoho.py,api/_store.py,data/**}"
+    },
+    "api/holds.py": {
+      "includeFiles": "api/_store.py"
     }
   }
 }
