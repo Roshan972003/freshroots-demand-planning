@@ -73,7 +73,7 @@ Proposed, with thresholds for Deepa to confirm. Shut it down, or go back and reb
 - `engine.py` encodes Raghav's rules (spike, stockout, overstock, festival uplift, perishable window) and the review-queue triggers.
 - The live app (`public/index.html` with the `api/` functions) shows status, cover and reasoning for each SKU and records planner decisions. `out/dashboard.html` from `build_dashboard.py` is an older static view.
 - `run_weekly.sh` refreshes the outputs and archives each run.
-- On 19 Oct 2026 (a festival month) it flags 5 SKUs for reorder now, 2 to pause and 8 as fine.
+- On the 24 Oct 2026 data from Zoho (a festival month) it flags 3 SKUs for reorder now and 2 to pause. Almond Milk and Peanut Butter are fine because POs for them are already open.
 
 ## 4. Risks and open items
 
