@@ -17,6 +17,12 @@
     },
     "api/settings.py": {
       "includeFiles": "api/_store.py"
+    },
+    "api/uplift.py": {
+      "includeFiles": "api/_store.py"
+    },
+    "api/po_log.py": {
+      "includeFiles": "api/_store.py"
     }
   }
 }

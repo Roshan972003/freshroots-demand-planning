@@ -29,9 +29,10 @@ def build(month=None, festival=None, demand_adj=0.0, simulate_shift=False, simul
             zoho["error"] = str(e); kw = {}
     try:
         rules = _store.list_rules()
+        uplifts = {k: v["pct"] for k, v in _store.list_uplifts().items()}
     except Exception:
-        rules = {}
-    common = dict(festival=festival, demand_adj=demand_adj, simulate_shift=simulate_shift, simulate_churn=simulate_churn, rules=rules, **kw)
+        rules, uplifts = {}, {}
+    common = dict(festival=festival, demand_adj=demand_adj, simulate_shift=simulate_shift, simulate_churn=simulate_churn, rules=rules, uplifts=uplifts, **kw)
     res = run(data, month, **common)
     if live:        # recompute with the latest mid-week regional shift applied to each affected SKU's demand
         shift = {}

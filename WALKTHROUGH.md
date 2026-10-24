@@ -41,3 +41,8 @@ Live app: https://freshroots-demand-planning-indol.vercel.app
 
 ## Layout: tabs
 The app is laid out as five tabs (Demand planning, Mid-week signals, WhatsApp CS desk, Executive view, What-if & burn-down) under a sticky header that carries the mandate strip. The Mid-week tab adds a Monday-snapshot vs live-signals comparison computed from the data. Command menu entries jump between tabs.
+
+## Human approval for POs, and the Festival plan tab
+- Set your name once with the **Approver** button in the header. Every decision and PO records it.
+- **Festival plan:** shows the festival calendar, an editable uplift per category and per product, and which products rise most. Changing an uplift re-runs the rules and records who changed it.
+- **Execute batch POs:** the check now always needs the "I approve" tick. Below the table, the audit log lists every PO raised and who approved it.

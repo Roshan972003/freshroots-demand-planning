@@ -2,7 +2,7 @@
 import os, sqlite3
 
 DATABASE_URL = os.environ.get("DATABASE_URL") or os.environ.get("POSTGRES_URL")
-COLS = ("as_of", "sku", "decision", "rec_status", "rec_qty", "final_qty", "reason", "tag", "decided_at")
+COLS = ("as_of", "sku", "decision", "rec_status", "rec_qty", "final_qty", "reason", "tag", "decided_by", "decided_at")
 
 def _pg():
     import psycopg2
@@ -14,7 +14,7 @@ def _sqlite():
 
 SCHEMA = """CREATE TABLE IF NOT EXISTS overrides (
     as_of TEXT NOT NULL, sku TEXT NOT NULL, decision TEXT NOT NULL, rec_status TEXT NOT NULL,
-    rec_qty INTEGER NOT NULL, final_qty INTEGER, reason TEXT, tag TEXT,
+    rec_qty INTEGER NOT NULL, final_qty INTEGER, reason TEXT, tag TEXT, decided_by TEXT,
     decided_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (as_of, sku))"""
 
 def _run(sql_pg, sql_lite, params=(), fetch=False):
@@ -22,7 +22,7 @@ def _run(sql_pg, sql_lite, params=(), fetch=False):
         conn = _pg()
         try:
             with conn, conn.cursor() as cur:
-                cur.execute(SCHEMA); cur.execute("ALTER TABLE overrides ADD COLUMN IF NOT EXISTS tag TEXT"); cur.execute(sql_pg, params)
+                cur.execute(SCHEMA); cur.execute("ALTER TABLE overrides ADD COLUMN IF NOT EXISTS tag TEXT"); cur.execute("ALTER TABLE overrides ADD COLUMN IF NOT EXISTS decided_by TEXT"); cur.execute(sql_pg, params)
                 return cur.fetchall() if fetch else None
         finally:
             conn.close()
@@ -30,27 +30,30 @@ def _run(sql_pg, sql_lite, params=(), fetch=False):
     try:
         with conn:
             conn.execute(SCHEMA)
-            if "tag" not in [c[1] for c in conn.execute("PRAGMA table_info(overrides)")]:
+            cols = [c[1] for c in conn.execute("PRAGMA table_info(overrides)")]
+            if "tag" not in cols:
                 conn.execute("ALTER TABLE overrides ADD COLUMN tag TEXT")
+            if "decided_by" not in cols:
+                conn.execute("ALTER TABLE overrides ADD COLUMN decided_by TEXT")
             cur = conn.execute(sql_lite, params)
             return cur.fetchall() if fetch else None
     finally:
         conn.close()
 
 def list_overrides(as_of):
-    rows = _run("SELECT as_of,sku,decision,rec_status,rec_qty,final_qty,reason,tag,decided_at::text FROM overrides WHERE as_of=%s",
-                "SELECT as_of,sku,decision,rec_status,rec_qty,final_qty,reason,tag,decided_at FROM overrides WHERE as_of=?",
+    rows = _run("SELECT as_of,sku,decision,rec_status,rec_qty,final_qty,reason,tag,decided_by,decided_at::text FROM overrides WHERE as_of=%s",
+                "SELECT as_of,sku,decision,rec_status,rec_qty,final_qty,reason,tag,decided_by,decided_at FROM overrides WHERE as_of=?",
                 (as_of,), fetch=True)
     return [dict(zip(COLS, r)) for r in rows]
 
-def save_override(as_of, sku, decision, rec_status, rec_qty, final_qty, reason, tag=""):
-    p = (as_of, sku, decision, rec_status, rec_qty, final_qty, reason, tag)
-    _run("""INSERT INTO overrides (as_of,sku,decision,rec_status,rec_qty,final_qty,reason,tag) VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
+def save_override(as_of, sku, decision, rec_status, rec_qty, final_qty, reason, tag="", decided_by=""):
+    p = (as_of, sku, decision, rec_status, rec_qty, final_qty, reason, tag, decided_by)
+    _run("""INSERT INTO overrides (as_of,sku,decision,rec_status,rec_qty,final_qty,reason,tag,decided_by) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
             ON CONFLICT (as_of,sku) DO UPDATE SET decision=EXCLUDED.decision, rec_status=EXCLUDED.rec_status,
-            rec_qty=EXCLUDED.rec_qty, final_qty=EXCLUDED.final_qty, reason=EXCLUDED.reason, tag=EXCLUDED.tag, decided_at=now()::text""",
-         """INSERT INTO overrides (as_of,sku,decision,rec_status,rec_qty,final_qty,reason,tag) VALUES (?,?,?,?,?,?,?,?)
+            rec_qty=EXCLUDED.rec_qty, final_qty=EXCLUDED.final_qty, reason=EXCLUDED.reason, tag=EXCLUDED.tag, decided_by=EXCLUDED.decided_by, decided_at=now()::text""",
+         """INSERT INTO overrides (as_of,sku,decision,rec_status,rec_qty,final_qty,reason,tag,decided_by) VALUES (?,?,?,?,?,?,?,?,?)
             ON CONFLICT (as_of,sku) DO UPDATE SET decision=excluded.decision, rec_status=excluded.rec_status,
-            rec_qty=excluded.rec_qty, final_qty=excluded.final_qty, reason=excluded.reason, tag=excluded.tag, decided_at=CURRENT_TIMESTAMP""", p)
+            rec_qty=excluded.rec_qty, final_qty=excluded.final_qty, reason=excluded.reason, tag=excluded.tag, decided_by=excluded.decided_by, decided_at=CURRENT_TIMESTAMP""", p)
 
 def delete_override(as_of, sku):
     _run("DELETE FROM overrides WHERE as_of=%s AND sku=%s", "DELETE FROM overrides WHERE as_of=? AND sku=?", (as_of, sku))
@@ -148,3 +151,37 @@ def get_settings():
 def set_setting(k, v):
     _run2(SET_SCHEMA, "INSERT INTO app_settings (k, v) VALUES (%s,%s) ON CONFLICT (k) DO UPDATE SET v=EXCLUDED.v",
           "INSERT OR REPLACE INTO app_settings (k, v) VALUES (?,?)", (k, v))
+
+
+# --- festival uplift by category / SKU, and the purchase-order audit log ------------------------------------------
+UPLIFT_SCHEMA = "CREATE TABLE IF NOT EXISTS festival_uplift (scope TEXT PRIMARY KEY, pct REAL NOT NULL, note TEXT, updated_by TEXT, updated_at TEXT NOT NULL)"
+POLOG_SCHEMA = """CREATE TABLE IF NOT EXISTS po_log (
+    id TEXT PRIMARY KEY, po_number TEXT, sku TEXT, qty INTEGER, as_of TEXT, approved_by TEXT, zoho_status TEXT, created_at TEXT NOT NULL)"""
+
+def list_uplifts():
+    rows = _run2(UPLIFT_SCHEMA, "SELECT scope, pct, note, updated_by, updated_at FROM festival_uplift", "SELECT scope, pct, note, updated_by, updated_at FROM festival_uplift", fetch=True)
+    return {r[0]: dict(pct=r[1], note=r[2] or "", updated_by=r[3] or "", updated_at=r[4]) for r in rows}
+
+def save_uplift(scope, pct, note, by):
+    now = _now().strftime("%Y-%m-%d %H:%M:%S")
+    _run2(UPLIFT_SCHEMA, "INSERT INTO festival_uplift (scope,pct,note,updated_by,updated_at) VALUES (%s,%s,%s,%s,%s) ON CONFLICT (scope) DO UPDATE SET pct=EXCLUDED.pct, note=EXCLUDED.note, updated_by=EXCLUDED.updated_by, updated_at=EXCLUDED.updated_at",
+          "INSERT OR REPLACE INTO festival_uplift (scope,pct,note,updated_by,updated_at) VALUES (?,?,?,?,?)", (scope, float(pct), note, by, now))
+
+def delete_uplift(scope):
+    _run2(UPLIFT_SCHEMA, "DELETE FROM festival_uplift WHERE scope=%s", "DELETE FROM festival_uplift WHERE scope=?", (scope,))
+
+def get_decision(as_of, sku):
+    rows = _run2(SCHEMA, "SELECT decision, final_qty, decided_by FROM overrides WHERE as_of=%s AND sku=%s", "SELECT decision, final_qty, decided_by FROM overrides WHERE as_of=? AND sku=?", (as_of, sku), fetch=True)
+    return dict(zip(("decision", "final_qty", "decided_by"), rows[0])) if rows else None
+
+def log_po(po_number, sku, qty, as_of, approved_by, zoho_status):
+    import time
+    now = _now().strftime("%Y-%m-%d %H:%M:%S")
+    _run2(POLOG_SCHEMA, "INSERT INTO po_log (id,po_number,sku,qty,as_of,approved_by,zoho_status,created_at) VALUES (%s,%s,%s,%s,%s,%s,%s,%s) ON CONFLICT (id) DO NOTHING",
+          "INSERT OR IGNORE INTO po_log (id,po_number,sku,qty,as_of,approved_by,zoho_status,created_at) VALUES (?,?,?,?,?,?,?,?)",
+          (f"{int(time.time()*1000)}-{sku}", po_number, sku, int(qty), as_of, approved_by, zoho_status, now))
+
+def list_po_log():
+    rows = _run2(POLOG_SCHEMA, "SELECT po_number,sku,qty,as_of,approved_by,zoho_status,created_at FROM po_log ORDER BY created_at DESC LIMIT 50",
+                 "SELECT po_number,sku,qty,as_of,approved_by,zoho_status,created_at FROM po_log ORDER BY created_at DESC LIMIT 50", fetch=True)
+    return [dict(zip(("po_number", "sku", "qty", "as_of", "approved_by", "zoho_status", "created_at"), r)) for r in rows]

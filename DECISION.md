@@ -4,7 +4,7 @@ Freshroots, Deepa's 90-day mandate. This document covers Demand Planning only.
 
 Live app: https://freshroots-demand-planning-indol.vercel.app
 
-**Verdict: build it. The system recommends, Raghav reviews, procurement places the order. The engine never places a purchase order.**
+**Verdict: build it. The system recommends, a named person approves, and only then can a draft purchase order be raised. The server refuses any PO that lacks a recorded human approval of that SKU and quantity, and a person issues the draft in Zoho. The engine never issues a purchase order.**
 
 ## 1. Nine Checks
 
@@ -81,3 +81,8 @@ Proposed, with thresholds for Deepa to confirm. Shut it down, or go back and reb
 - **Data gaps:** the seed is per-SKU weekly (the case describes distributor-level data), there is one warehouse, and open Zoho purchase orders are only counted if IT keeps `data/open_orders.csv` current (the seed file is empty).
 - **Targets are proposals.** The 50% loss reduction and the 40% override limit are mine, not the case's.
 - **Adoption:** Raghav must see the engine as helping him. Every flag shows its reasons.
+
+## 5. Human in the loop for purchase orders, and festival-driven demand
+
+- **Every PO has a named human behind it, enforced by the server.** A decision (accept or override) must carry the approver's name. A PO is refused unless that SKU has such a decision for the plan date and the PO quantity equals the approved quantity. The batch gate always needs an explicit "I approve" tick, plus a second confirmation when live demand differs from Monday's snapshot by more than 10%. Every PO raised is written to an audit log with who approved it. Drafts only: a person issues them in Zoho.
+- **Demand is planned by festival, per category and per product.** Raghav's flat +25% in festival months is the default. The Festival plan tab lets a named person set an uplift for a category (for example beverages) or for one product, shows which products rise and by how many units a week, and gives the observed recent lift as evidence. Reorder quantities and the burn-down follow, and the burn-down applies the uplift only in the weeks that fall in festival months. The uplift values are planner inputs, not measurements: 16 weeks of data cannot prove a festival effect, so they should be checked against last year's festival sales once the 3-year history is available.

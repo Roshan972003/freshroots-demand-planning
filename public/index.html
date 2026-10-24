@@ -109,10 +109,11 @@ select,input[type=date]{font:inherit;padding:6px 9px;border-radius:8px;border:1p
   <div class="brand"><div class="logo"><svg viewBox="0 0 24 24" width="22" height="22" fill="#04130d"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></div>
     <div><h1>Freshroots Control Tower</h1><div class="sub" id="sub" style="margin:0">Loading…</div></div></div>
   <div class="card mand" id="mandate"></div>
-  <div class="ctl"><button id="kbtn" title="Command menu"><kbd>⌘K</kbd> Commands</button><span class="sw" id="fest" role="switch" tabindex="0"><i></i><span id="festLabel">Festival uplift +25%</span></span></div>
+  <div class="ctl"><button id="kbtn" title="Command menu"><kbd>⌘K</kbd> Commands</button><button id="apv" title="The named person who approves decisions and POs"></button><span class="sw" id="fest" role="switch" tabindex="0"><i></i><span id="festLabel">Festival uplift +25%</span></span></div>
 </header>
 <nav class="tabs" id="tabs" role="tablist">
   <button data-tab="demand" class="on">Demand planning</button>
+  <button data-tab="fest">Festival plan</button>
   <button data-tab="mid">Mid-week signals <span class="badge b-bad" id="tb-mid" style="display:none">LIVE ALERT</span></button>
   <button data-tab="cs">WhatsApp CS desk <span class="badge b-bad" id="tb-cs" style="display:none"></span></button>
   <button data-tab="exec">Executive view</button>
@@ -132,6 +133,10 @@ select,input[type=date]{font:inherit;padding:6px 9px;border-radius:8px;border:1p
 <thead><tr><th></th><th>SKU</th><th class="n">Stock</th><th class="n">Cover (wks)</th><th>4-wk vs 12-wk</th><th>Status</th><th>System action</th><th class="n">Qty</th><th>Planner</th></tr></thead>
 <tbody id="tb"></tbody></table></div>
 <p class="note" id="rules"></p>
+<section class="sec"><h2>Purchase orders raised (audit log)</h2><div class="card wrap" id="pol"></div></section>
+</div>
+<div class="pane" id="tab-fest" hidden>
+<div id="fest-body"></div>
 </div>
 <div class="pane" id="tab-mid" hidden>
 <div id="ticker"></div>
@@ -149,7 +154,7 @@ select,input[type=date]{font:inherit;padding:6px 9px;border-radius:8px;border:1p
 <div class="pane" id="tab-exec" hidden>
 <h2 style="font-size:15px;margin:0 0 8px">Executive dashboard (12 metrics)</h2><div>
 <div class="card sumc" id="sumc"></div><div class="mt" id="mt"></div></div>
-<p class="note" id="rules"></p>
+<p class="note"></p>
 <p class="note">Quarterly loss baseline from the case: ₹28–34 lakhs (₹18–22L stockouts + ₹10–12L overstock write-offs). Per-SKU rupee impact needs price data, which the seed does not include.</p>
 </div>
 <div class="pane" id="tab-sim" hidden>
@@ -192,7 +197,7 @@ async function load(){
     D=await (await fetch('/api/recommendations?'+q)).json();if(D.error)throw new Error(D.error);
     if(fest===null)fest=D.festival;
     OV={};(await (await fetch('/api/overrides?as_of='+D.as_of)).json()).forEach(x=>OV[x.sku]=x);
-    try{ST=await (await fetch('/api/settings')).json();if(!CS)CS=await (await fetch('/cs_sample.json')).json()}catch(e){}
+    try{await loadPoLog();ST=await (await fetch('/api/settings')).json();if(!CS)CS=await (await fetch('/cs_sample.json')).json()}catch(e){}
   }catch(e){$('sub').textContent='Could not load: '+e.message;return}
   render();
 }
@@ -233,7 +238,7 @@ function render(){
   document.querySelectorAll('[data-r]').forEach(b=>b.onclick=()=>{open=b.dataset.r;tag=OV[open]?.tag||'';msg=ok='';drawer()});
   document.querySelectorAll('input[data-s]').forEach(b=>b.onchange=()=>{b.checked?sel.add(b.dataset.s):sel.delete(b.dataset.s);bar()});
   const g=D.config;$('rules').textContent=`Rules (Raghav): spike >${g.spike_threshold*100}% over 12-wk avg → reorder ${g.high_demand_multiplier}x · cover <${g.stockout_weeks} wks → reorder now · >${g.overstock_weeks} wks → pause · perishable ${g.perishable_min_weeks}–${g.perishable_max_weeks} wks · festival months +${g.festival_uplift*100}% demand. Anything outside the rules goes to review.`;
-  bar();mandate();exec();csq();ticker();dists();net();burnUi();badges2();showTab(tab);if(fx>=0)setFx(fx);if(open)drawer();
+  bar();mandate();exec();festUi();poUi();csq();ticker();dists();net();burnUi();badges2();showTab(tab);if(fx>=0)setFx(fx);if(open)drawer();
 }
 function bar(){
   const n=[...sel].filter(s=>D.results.find(r=>r.sku===s&&actionable(r))).length,canDraft=D.zoho&&D.zoho.draft_enabled;
@@ -278,7 +283,24 @@ function drawer(){
 }
 function closeDr(){open=null;$('dr').classList.remove('on');$('dr2').classList.remove('on');$('ov').classList.remove('on');$('help').classList.remove('on');closeModal()}
 $('ov').onclick=closeDr;document.addEventListener('keydown',e=>{if(e.key==='Escape')closeDr()});
-async function post(body){const res=await fetch('/api/overrides',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});return[res.ok,await res.json()]}
+function approver(){try{return localStorage.getItem('approver')||''}catch(e){return ''}}
+function ensureApprover(force){
+  let a=approver();if(a&&!force)return a;
+  a=(prompt('Your name. A named person approves every decision and purchase order, and it is recorded.',a)||'').trim();
+  if(!a)return '';try{localStorage.setItem('approver',a)}catch(e){}apvChip();return a;
+}
+function apvChip(){const a=approver();$('apv').innerHTML=a?`Approver: <b>${esc(a)}</b> ✎`:'Set approver'}
+$('apv').onclick=()=>ensureApprover(true);apvChip();
+async function post(body){
+  const by=ensureApprover();if(!by)return[false,{error:'A named approver is required.'}];
+  const res=await fetch('/api/overrides',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.assign({decided_by:by},body))});return[res.ok,await res.json()]}
+async function reconfirm(sku){
+  const o=OV[sku];if(!o||o.decided_by)return[true,{}];
+  const r=await post({as_of:D.as_of,sku,decision:o.decision,rec_status:o.rec_status,rec_qty:o.rec_qty,final_qty:o.final_qty,reason:o.reason||'',tag:o.tag||''});
+  if(r[0])await refreshOv();return r;
+}
+async function zpo(sku,qty){const by=ensureApprover();if(!by)return[false,{error:'A named approver is required.'}];
+  const res=await fetch('/api/zoho_po',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sku,qty,as_of:D.as_of,approver:by})});return[res.ok,await res.json()]}
 async function refreshOv(){OV={};(await (await fetch('/api/overrides?as_of='+D.as_of)).json()).forEach(x=>OV[x.sku]=x)}
 async function save(r,decision){
   const b={as_of:D.as_of,sku:r.sku,decision,rec_status:r.status,rec_qty:r.rule_qty??r.recommended_qty??0};
@@ -287,8 +309,8 @@ async function save(r,decision){
 }
 async function draftPo(sku,qty){
   if(!confirm(`Create a DRAFT purchase order for ${qty} units of ${sku}${D.zoho.mode==='demo'?' in the Zoho DEMO sandbox':' in Zoho'}? A person still reviews and issues it.`))return;
-  const res=await fetch('/api/zoho_po',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sku,qty,as_of:D.as_of})});
-  const j=await res.json();msg=res.ok?'':(j.error||'Zoho request failed');ok=res.ok?`Draft ${j.purchaseorder_number||j.purchaseorder_id} created (${j.status}).`:'';render();
+  const rc=await reconfirm(sku);if(!rc[0]){msg=rc[1].error||'Could not record your approval';render();return}
+  const[rok,j]=await zpo(sku,qty);msg=rok?'':(j.error||'Zoho request failed');ok=rok?`Draft ${j.purchaseorder_number||j.purchaseorder_id} created (${j.status}), approved by ${esc(approver())}.`:'';await loadPoLog();render();
 }
 $('draft').onclick=async()=>{
   const rows=[...sel].map(s=>D.results.find(r=>r.sku===s)).filter(r=>r&&actionable(r));
@@ -390,8 +412,10 @@ function burnUi(){
   }
   sel.value=burnSku;$('blead').value=lead;sel.onchange=e=>{burnSku=e.target.value;burnUi()};$('blead').onchange=e=>{lead=+e.target.value;burnUi()};
   const r=D.results.find(x=>x.sku===burnSku);if(!r||!r.demand_rate){$('burn').textContent='No data for this SKU.';return}
-  const R=r.demand_rate,T=8,lo=r.min_weeks,hi=r.max_weeks,rec=r.recommended_qty||0,on=r.on_order||0;
-  const run=(add)=>{let s=r.stock,out=[s/R];for(let t=1;t<=T;t++){s=Math.max(0,s-R);if(t===1)s+=on;if(add&&t===lead)s+=rec;out.push(s/R)}return out};
+  const T=8,lo=r.min_weeks,hi=r.max_weeks,rec=r.recommended_qty||0,on=r.on_order||0,up=(r.festival_uplift||0)/100,base=(r.avg12||r.demand_rate)*(1+(D.demand_adj||0));
+  const festAt=t=>{const d=new Date(D.as_of+'T00:00:00');d.setDate(d.getDate()+7*t);const ym=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');return{f:!!(D.calendar&&D.calendar[ym]),ym}};
+  const rateAt=t=>base*(1+(festAt(t).f?up:0)),R=rateAt(0);
+  const run=(add)=>{let s=r.stock,out=[s/rateAt(0)];for(let t=1;t<=T;t++){s=Math.max(0,s-rateAt(t));if(t===1)s+=on;if(add&&t===lead)s+=rec;out.push(s/rateAt(t))}return out};
   const A=run(false),B=run(true),ymax=Math.max(hi*1.5,lo*2,...A,...B)*1.05;
   const W=720,H=260,L=44,Rt=12,Tp=10,Bt=32,x=t=>L+t/T*(W-L-Rt),y=v=>Tp+(1-Math.min(v,ymax)/ymax)*(H-Tp-Bt);
   const band=(a,b,c)=>`<rect x="${L}" y="${y(b)}" width="${W-L-Rt}" height="${y(a)-y(b)}" style="fill:var(${c})"/>`;
@@ -404,7 +428,7 @@ function burnUi(){
   ${[0,2,4,6,8].map(t=>`<text x="${x(t)}" y="${H-12}" text-anchor="middle" font-size="11" style="fill:var(--mute)" class="mono">wk ${t}</text>`).join('')}
   ${line(A,'stroke:var(--mute);stroke-dasharray:5 4')}${line(B,'stroke:var(--brand)')}
   ${sa?`<circle cx="${x(sa)}" cy="${y(0)}" r="5" style="fill:var(--bad)"/>`:''}</svg>
-  <div class="tag"><span style="color:var(--bad)">■</span> below ${lo} wks (stockout risk) · <span style="color:var(--brand)">■</span> ${lo}–${hi} wks (safe) · <span style="color:var(--warn)">■</span> above ${hi} wks (overstock) · dashed = no new order · solid = recommended ${rec} units arriving week ${lead}${on?` · ${on} units on order assumed week 1`:''}</div>
+  <div class="tag">Demand follows the calendar: festival weeks use this SKU's ${(up*100).toFixed(0)}% uplift (${esc(r.uplift_source)}), other weeks the 12-week average.</div><div class="tag"><span style="color:var(--bad)">■</span> below ${lo} wks (stockout risk) · <span style="color:var(--brand)">■</span> ${lo}–${hi} wks (safe) · <span style="color:var(--warn)">■</span> above ${hi} wks (overstock) · dashed = no new order · solid = recommended ${rec} units arriving week ${lead}${on?` · ${on} units on order assumed week 1`:''}</div>
   <div style="margin-top:6px">${sa?`Without a new order this SKU runs out in <b>week ${sa}</b>.`:'No stockout within 8 weeks without a new order.'} ${rec?(sb?`Even with the recommended order it runs out in <b>week ${sb}</b>: a ${lead}-week lead time is too slow.`:'With the recommended order it stays in stock.'):''}</div>`;
 }
 
@@ -567,21 +591,22 @@ $('draft').onclick=async()=>{
   <td class="n num" style="${d.hot&&d.dr<0?'color:var(--bad);font-weight:700':''}">${d.b.demand_rate}</td><td class="n num" style="${d.hot?(d.dr<0?'color:var(--bad);font-weight:700':'color:var(--warn);font-weight:700'):''}">${d.dr>0?'+':''}${d.dr.toFixed(1)}%</td>
   <td class="n num" style="${d.lq!==d.a.recommended_qty?'color:var(--bad);font-weight:700':''}">${d.lq}</td></tr>`).join('')}</tbody></table></div>
   ${block?`<div class="banner" style="margin-top:12px">Live demand differs from Monday's snapshot by up to ${worst.toFixed(0)}% (limit 10%). Single-click approval is blocked.</div>
-    <label style="display:flex;gap:8px;align-items:center;margin:8px 0"><input type="checkbox" id="rv"> I have reviewed the live delta</label>
-    <button class="p" id="go" disabled>Confirm adjusted order with Live Delta</button>`:`<div class="okmsg">Live data is within 10% of Monday's snapshot.</div><div style="margin-top:10px"><button class="p" id="go">Approve &amp; create draft POs</button></div>`}
+    `:`<div class="okmsg">Live data is within 10% of Monday's snapshot.</div>`}
+  <label style="display:flex;gap:8px;align-items:center;margin:10px 0"><input type="checkbox" id="rv"> I, <b>${esc(approver()||'(set your name)')}</b>, have reviewed ${block?'the live delta and ':''}these ${rows.length} PO${rows.length===1?'':'s'} and approve raising them.</label>
+  <button class="p" id="go" disabled>${block?'Confirm adjusted order with Live Delta':'Approve &amp; create draft POs'}</button>
   <p class="tag">Drafts only${demo?', in the Zoho demo sandbox':''}: a person reviews and issues them in Zoho.</p><div id="gm"></div>`);
-  $('mc').onclick=closeModal;if($('rv'))$('rv').onchange=e=>{$('go').disabled=!e.target.checked};
+  $('mc').onclick=closeModal;$('rv').onchange=e=>{$('go').disabled=!e.target.checked||!approver()};
   $('go').onclick=async()=>{
     $('go').disabled=true;let done=0;const fail=[];
     for(const d of data){
       const useLive=block,qty=useLive?d.lq:d.a.recommended_qty;if(!(qty>0)){fail.push(d.r.sku+': live data says no order needed');continue}
       const adjusted=qty!==d.a.recommended_qty;
-      const[o1,j1]=OV[d.r.sku]?[true,{}]:await post(adjusted?{as_of:D.as_of,sku:d.r.sku,decision:'overridden',rec_status:d.r.status,rec_qty:d.a.recommended_qty,final_qty:qty,tag:'Live delta adjustment',reason:'Adjusted to live mid-week delta'}:{as_of:D.as_of,sku:d.r.sku,decision:'accepted',rec_status:d.r.status,rec_qty:d.a.recommended_qty});
+      const[o1,j1]=OV[d.r.sku]?await reconfirm(d.r.sku):await post(adjusted?{as_of:D.as_of,sku:d.r.sku,decision:'overridden',rec_status:d.r.status,rec_qty:d.a.recommended_qty,final_qty:qty,tag:'Live delta adjustment',reason:'Adjusted to live mid-week delta'}:{as_of:D.as_of,sku:d.r.sku,decision:'accepted',rec_status:d.r.status,rec_qty:d.a.recommended_qty});
       if(!o1){fail.push(d.r.sku+': '+j1.error);continue}
-      const res=await fetch('/api/zoho_po',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sku:d.r.sku,qty:OV[d.r.sku]?OV[d.r.sku].final_qty:qty,as_of:D.as_of})});
-      res.ok?done++:fail.push(d.r.sku+': '+((await res.json()).error||'failed'));
+      const[rok,rj]=await zpo(d.r.sku,OV[d.r.sku]?OV[d.r.sku].final_qty:qty);
+      rok?done++:fail.push(d.r.sku+': '+(rj.error||'failed'));
     }
-    sel.clear();$('gm').innerHTML=`<div class="${fail.length?'err':'okmsg'}">${done} draft PO(s) created${fail.length?'. Skipped/failed: '+esc(fail.join('; ')):'.'}</div>`;await refreshOv();render();setTimeout(closeModal,fail.length?6000:1800);
+    sel.clear();$('gm').innerHTML=`<div class="${fail.length?'err':'okmsg'}">${done} draft PO(s) created${fail.length?'. Skipped/failed: '+esc(fail.join('; ')):'.'}</div>`;await refreshOv();await loadPoLog();render();setTimeout(closeModal,fail.length?6000:1800);
   };
 };
 
@@ -651,7 +676,7 @@ function csq(){
 }
 
 // ---- tabs (the layout follows the control-tower prototype; every number still comes from the data)
-let tab=(location.hash||'#demand').slice(1);if(!['demand','mid','cs','exec','sim'].includes(tab))tab='demand';let MV=null,MVk='';
+let tab=(location.hash||'#demand').slice(1);if(!['demand','fest','mid','cs','exec','sim'].includes(tab))tab='demand';let MV=null,MVk='';
 function showTab(t){
   tab=t;history.replaceState(null,'','#'+t);
   document.querySelectorAll('.pane').forEach(p=>p.hidden=p.id!=='tab-'+t);
@@ -678,6 +703,49 @@ async function mvl(){
     <div class="cmp" style="margin-top:10px"><div><span>Regional shift</span><b class="num" style="${A.regions.length?'color:var(--bad)':''}">${A.regions.length?A.regions.map(g=>g.region+' '+g.change_pct+'%').join(', '):'none'}</b></div><div><span>Units to order (live)</span><b class="num">${tot(l)}</b></div></div>
     <div class="tag" style="margin-top:8px">${aff.length} open PO(s) on affected SKUs${ch.length?` · quantity changes: ${ch.map(r=>`${esc(r.name.replace('Freshroots ',''))} ${actionable(sq[r.sku])?sq[r.sku].recommended_qty:0}→${actionable(r)?r.recommended_qty:0}`).join(', ')}`:' · no quantity changes'}</div>
     <div class="tag">No live SAP feed: "live" = current stock and POs plus the latest mid-week signal in the sales data.</div></div>`;
+}
+
+// ---- PO audit log
+let POL=[];
+async function loadPoLog(){try{POL=await (await fetch('/api/po_log')).json()}catch(e){POL=[]}}
+function poUi(){
+  $('pol').innerHTML=POL.length?`<table><thead><tr><th>PO</th><th>SKU</th><th class="n">Qty</th><th>Approved by</th><th>Status</th><th>When (UTC)</th></tr></thead><tbody>${POL.map(p=>`<tr><td class="mono">${esc(p.po_number)}</td><td class="mono">${esc(p.sku)}</td><td class="n num">${p.qty}</td><td>${esc(p.approved_by)}</td><td><span class="badge b-sky">${esc(p.zoho_status)}</span></td><td class="tag">${esc(p.created_at)}</td></tr>`).join('')}</tbody></table>`:'<div style="padding:12px" class="tag">No purchase orders raised yet. Every PO needs a named person to approve its SKU and quantity first; the server refuses it otherwise. Drafts are issued by a person in Zoho.</div>';
+}
+
+// ---- festival plan: which categories and products rise, and by how much
+let UP={};
+async function setUplift(scope,pct,note){
+  const by=ensureApprover();if(!by)return;
+  const res=await fetch('/api/uplift',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({scope,pct,by,note:note||''})});
+  if(!res.ok){alert((await res.json()).error||'Could not save');return}await load();
+}
+async function clearUplift(scope){await fetch('/api/uplift?scope='+encodeURIComponent(scope),{method:'DELETE'});await load()}
+function festUi(){
+  const R=D.results,cs=D.category_stats||[],ym0=D.as_of.slice(0,7),mons=[];
+  for(let i=0;i<5;i++){const d=new Date(D.as_of+'T00:00:00');d.setDate(1);d.setMonth(d.getMonth()+i);const ym=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');mons.push([ym,d.toLocaleString('en',{month:'short',year:'numeric'})])}
+  const rise=r=>(r.avg12||0)*(r.festival_uplift||0)/100;
+  const catRise=c=>R.filter(r=>c.skus.includes(r.sku)).reduce((a,r)=>a+rise(r),0);
+  const sorted=[...R].filter(r=>r.avg12).sort((a,b)=>rise(b)-rise(a));
+  $('fest-body').innerHTML=`
+  <div class="card" style="padding:14px;margin-bottom:12px"><b>Festival calendar</b> <span class="tag">uplift applies in festival months (Oct, Nov, Mar)</span>
+    <div class="mt" style="margin-top:10px">${mons.map(([ym,l])=>{const f=D.calendar&&D.calendar[ym];return `<div class="card" style="padding:10px;${f?'border-color:var(--warn)':''}"><span>${l}</span><b style="font-size:15px;color:${f?'var(--warn)':'var(--mute)'}">${f?esc((D.festival_names||{})[ym]||'Festival'):'No festival'}</b></div>`}).join('')}</div></div>
+  <div class="note" style="margin:0 0 10px">Raghav's rule is a flat +${(D.config.festival_uplift*100).toFixed(0)}% on everything in a festival month. Here a person sets the uplift by category, or by product, from what has sold in past festivals. The "observed" column is what each category did over the last 4 weeks versus the 8 before, as evidence only: 16 weeks cannot prove a festival effect, so check it against last year's festival sales once the 3-year history is loaded.</div>
+  <h2 style="font-size:15px;margin:12px 0 6px">By category</h2>
+  <div class="card wrap"><table><thead><tr><th>Category</th><th class="n">SKUs</th><th class="n">Observed, last 4 wks</th><th class="n">Raghav default</th><th class="n">In force</th><th class="n">Extra units / wk</th><th>Set uplift %</th></tr></thead><tbody>
+  ${cs.map(c=>`<tr><td><b>${esc(c.category)}</b></td><td class="n num">${c.skus.length}</td><td class="n num" style="color:${c.observed_lift_pct>10?'var(--warn)':'inherit'}">${c.observed_lift_pct==null?'–':(c.observed_lift_pct>0?'+':'')+c.observed_lift_pct+'%'}</td><td class="n num">${c.default_pct}%</td>
+  <td class="n num"><b>${c.effective_pct}%</b>${c.override_pct!=null?' <span class="badge b-vio">PLANNER</span>':''}</td><td class="n num">${Math.round(catRise(c)).toLocaleString('en-IN')}</td>
+  <td><input type="number" step="1" min="-50" max="150" data-c="${esc(c.category)}" placeholder="${c.effective_pct}" style="width:80px;font:inherit;padding:4px 6px;border-radius:6px;border:1px solid var(--inset);background:var(--bg);color:var(--ink)"> <button data-cs="${esc(c.category)}">Set</button>${c.override_pct!=null?` <button data-cr="${esc(c.category)}">Reset</button>`:''}</td></tr>`).join('')}</tbody></table></div>
+  <h2 style="font-size:15px;margin:16px 0 6px">What rises, product by product</h2>
+  <div class="card wrap"><table><thead><tr><th>SKU</th><th>Category</th><th class="n">Normal / wk</th><th class="n">Festival / wk</th><th class="n">Extra / wk</th><th class="n">Uplift</th><th>Override this product %</th></tr></thead><tbody>
+  ${sorted.map(r=>`<tr><td><b>${esc(r.name.replace('Freshroots ',''))}</b><br><span class="id mono">${r.sku}</span></td><td>${esc(r.category)}</td><td class="n num">${Math.round(r.avg12)}</td><td class="n num">${Math.round(r.avg12*(1+r.festival_uplift/100))}</td><td class="n num" style="color:var(--warn)">+${Math.round(rise(r))}</td>
+  <td class="n num">${r.festival_uplift}% <span class="tag">${esc(r.uplift_source)}</span></td>
+  <td><input type="number" step="1" min="-50" max="150" data-s="${r.sku}" placeholder="${r.festival_uplift}" style="width:80px;font:inherit;padding:4px 6px;border-radius:6px;border:1px solid var(--inset);background:var(--bg);color:var(--ink)"> <button data-ss="${r.sku}">Set</button>${r.uplift_source==='sku'?` <button data-sr="${r.sku}">Reset</button>`:''}</td></tr>`).join('')}</tbody></table></div>
+  <p class="note">Changing an uplift re-runs the rules at once, so reorder quantities follow. Every change records who made it. Purchase orders still need a named person's approval.</p>`;
+  const val=sel=>{const v=document.querySelector(sel);return v&&v.value!==''?parseFloat(v.value):null};
+  document.querySelectorAll('[data-cs]').forEach(b=>b.onclick=()=>{const v=val(`[data-c="${b.dataset.cs}"]`);if(v==null)return alert('Type a percentage first.');setUplift('cat:'+b.dataset.cs,v,'category')});
+  document.querySelectorAll('[data-cr]').forEach(b=>b.onclick=()=>clearUplift('cat:'+b.dataset.cr));
+  document.querySelectorAll('[data-ss]').forEach(b=>b.onclick=()=>{const v=val(`[data-s="${b.dataset.ss}"]`);if(v==null)return alert('Type a percentage first.');setUplift('sku:'+b.dataset.ss,v,'product')});
+  document.querySelectorAll('[data-sr]').forEach(b=>b.onclick=()=>clearUplift('sku:'+b.dataset.sr));
 }
 
 load();

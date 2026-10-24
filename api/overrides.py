@@ -35,11 +35,14 @@ class handler(BaseHTTPRequestHandler):
                 return self._send(400, {"error": "final_qty must be >= 0"})
             reason = (b.get("reason") or "")[:300]
             tag = (b.get("tag") or "")
+            by = str(b.get("decided_by") or "").strip()[:60]
+            if not by:
+                return self._send(400, {"error": "decided_by is required: a named person must make every decision"})
             if tag and tag not in TAGS:
                 return self._send(400, {"error": "unknown reason tag"})
             if decision == "overridden" and not (reason.strip() or tag):
                 return self._send(400, {"error": "a reason tag or note is required when overriding"})
-            _store.save_override(as_of, sku, decision, str(b.get("rec_status", "")), rec_qty, final_qty, reason, tag)
+            _store.save_override(as_of, sku, decision, str(b.get("rec_status", "")), rec_qty, final_qty, reason, tag, by)
             self._send(200, {"ok": True})
         except (KeyError, ValueError, TypeError) as e:
             self._send(400, {"error": f"bad request: {e}"})

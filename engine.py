@@ -23,14 +23,15 @@ def read(path):
     with open(path, newline="") as f:
         return list(csv.DictReader(f))
 
-def decide(s, vals, stock, is_fest, cfg=CONFIG, on_order=0, demand_adj=0.0):
+def decide(s, vals, stock, is_fest, cfg=CONFIG, on_order=0, demand_adj=0.0, uplift=None):
     """Apply Raghav's rules to one SKU. s = sku_master row, vals = weekly units (oldest first).
     on_order = units already ordered but not yet received (counted as stock for the cover checks)."""
     base = vals[-cfg["baseline_weeks"]:]
     recent = vals[-cfg["recent_weeks"]:]
     avg12, recent4 = mean(base), mean(recent)
     spike = recent4 / avg12 - 1
-    rate = avg12 * (1 + cfg["festival_uplift"]) if is_fest else avg12
+    up = cfg["festival_uplift"] if uplift is None else uplift
+    rate = avg12 * (1 + up) if is_fest else avg12
     rate *= 1 + demand_adj                       # what-if only; 0 in normal runs
     cover = (stock + on_order) / rate
     perish = s["Perishability"].lower() == "high"
@@ -45,7 +46,7 @@ def decide(s, vals, stock, is_fest, cfg=CONFIG, on_order=0, demand_adj=0.0):
     if cover > hi: flags.append("OVERSTOCK_RISK")
 
     reasons, review = [], []
-    if is_fest: reasons.append(f"Festival month: demand rate uplifted {cfg['festival_uplift']:.0%} ({avg12:.0f} -> {rate:.0f}/wk)")
+    if is_fest: reasons.append(f"Festival month: demand rate uplifted {up:.0%} ({avg12:.0f} -> {avg12*(1+up):.0f}/wk)")
     if high: reasons.append(f"Last 4 wks avg {recent4:.0f} is {spike:+.0%} vs 12-wk avg {avg12:.0f} (> +20%)")
     if demand_adj: reasons.append(f"What-if: demand rate {demand_adj:+.0%}")
     if on_order: reasons.append(f"{on_order} units already on order are counted in stock")
@@ -70,7 +71,7 @@ def decide(s, vals, stock, is_fest, cfg=CONFIG, on_order=0, demand_adj=0.0):
         review.append(f"Rule order of {qty} would push cover to {(stock+on_order+qty)/rate:.1f} wks (> {hi} max)")
     return dict(flags=flags, reasons=reasons, review=review, status=status, action=action, qty=qty,
                 avg12=avg12, recent4=recent4, spike=spike, rate=rate, cover=cover,
-                lo=lo, hi=hi, std=std, stock=stock, perish=perish, on_order=on_order)
+                lo=lo, hi=hi, std=std, stock=stock, perish=perish, on_order=on_order, uplift=up)
 
 def find_anomalies(series, skus, dists, threshold=0.20, simulate=None, churn_threshold=0.30):
     """Latest week vs the mean of the prior 4 weeks, per region and per distributor (sums of their SKUs).
@@ -115,12 +116,24 @@ def find_anomalies(series, skus, dists, threshold=0.20, simulate=None, churn_thr
     return dict(threshold_pct=threshold * 100, churn_threshold_pct=churn_threshold * 100, simulated=bool(simulate),
                 simulation=simulate[1] if simulate else None, regions=regions, distributors=dist_list)
 
-def run(data_dir="data", month=None, cfg=CONFIG, open_po=None, stock=None, today=None, festival=None, demand_adj=0.0, open_po_detail=None, simulate_shift=False, simulate_churn=False, sku_adj=None, rules=None):
+def run(data_dir="data", month=None, cfg=CONFIG, open_po=None, stock=None, today=None, festival=None, demand_adj=0.0, open_po_detail=None, simulate_shift=False, simulate_churn=False, sku_adj=None, rules=None, uplifts=None):
     sales = read(f"{data_dir}/weekly_sales.csv")
     skus = {r["SKU_ID"]: r for r in read(f"{data_dir}/sku_master.csv")}
     dists = {r["Distributor_ID"]: r for r in read(f"{data_dir}/distributor_master.csv")}
     inv = {r["SKU_ID"]: r for r in read(f"{data_dir}/current_inventory.csv")}
     festival_cal = {r["Year_Month"]: r["Is_Festival_Month"].upper() == "TRUE" for r in read(f"{data_dir}/calendar.csv")}
+    fest_names = {}
+    if os.path.exists(f"{data_dir}/festivals.csv"):
+        fest_names = {r["Year_Month"]: r["Festival"] for r in read(f"{data_dir}/festivals.csv")}
+    uplifts = uplifts or {}
+
+    def uplift_for(sid, category):
+        """Festival uplift for a SKU: its own override, else its category's, else Raghav's flat default."""
+        if f"sku:{sid}" in uplifts:
+            return uplifts[f"sku:{sid}"] / 100, "sku"
+        if f"cat:{category}" in uplifts:
+            return uplifts[f"cat:{category}"] / 100, "category"
+        return cfg["festival_uplift"], "default"
 
     # Open purchase orders: passed in live (Zoho) or from data/open_orders.csv (SKU_ID, Quantity). Missing = nothing on order.
     po_source = "zoho" if open_po is not None else "csv"
@@ -168,7 +181,8 @@ def run(data_dir="data", month=None, cfg=CONFIG, open_po=None, stock=None, today
                 demand_rate=None, weeks_cover=None, min_weeks=None, max_weeks=None, weekly=[]))
             continue
 
-        d_ = decide(s, vals, int(inv_row["Units_On_Hand"]), is_fest, cfg, open_po.get(sid, 0), demand_adj + (sku_adj or {}).get(sid, 0.0))
+        up_sku, up_src = uplift_for(sid, s["Category"])
+        d_ = decide(s, vals, int(inv_row["Units_On_Hand"]), is_fest, cfg, open_po.get(sid, 0), demand_adj + (sku_adj or {}).get(sid, 0.0), up_sku)
         flags, reasons, status, action, qty = d_["flags"], d_["reasons"], d_["status"], d_["action"], d_["qty"]
         avg12, recent4, spike, rate, cover = d_["avg12"], d_["recent4"], d_["spike"], d_["rate"], d_["cover"]
         lo, hi, std, stock, perish = d_["lo"], d_["hi"], d_["std"], d_["stock"], d_["perish"]
@@ -188,12 +202,26 @@ def run(data_dir="data", month=None, cfg=CONFIG, open_po=None, stock=None, today
             distributor=d["Distributor_Name"] if d else s["Distributor_ID"], distributor_id=s["Distributor_ID"],
             region=d["Region"] if d else "Unknown", status=status, action=action,
             flags=flags, reasons=reasons, recommended_qty=qty if status != "REVIEW" else 0,
-            rule_qty=qty, planner_rule=rule, stock=stock, on_order=d_["on_order"], avg12=round(avg12, 1), recent4=round(recent4, 1), spike_pct=round(spike*100, 1),
+            rule_qty=qty, planner_rule=rule, festival_uplift=round(up_sku * 100, 1), uplift_source=up_src, stock=stock, on_order=d_["on_order"], avg12=round(avg12, 1), recent4=round(recent4, 1), spike_pct=round(spike*100, 1),
             demand_rate=round(rate, 1), weeks_cover=round(cover, 1), min_weeks=lo, max_weeks=hi,
             std_qty=std, weekly=list(zip(weeks, vals))))
+    # evidence for the festival plan: how each category has moved lately, and what uplift is in force
+    cats = {}
+    for r in results:
+        if r.get("weekly") and len(r["weekly"]) >= 12:
+            c = cats.setdefault(r["category"], dict(category=r["category"], skus=[], recent=0.0, prior=0.0))
+            c["skus"].append(r["sku"]); v = [x[1] for x in r["weekly"]]
+            c["recent"] += sum(v[-4:]) / 4; c["prior"] += sum(v[-12:-4]) / 8
+    category_stats = []
+    for name, c in sorted(cats.items()):
+        sample = skus[c["skus"][0]]
+        eff, src = uplift_for("", name)
+        category_stats.append(dict(category=name, skus=c["skus"], observed_lift_pct=round((c["recent"] / c["prior"] - 1) * 100, 1) if c["prior"] else None,
+                                   default_pct=round(cfg["festival_uplift"] * 100, 1), override_pct=uplifts.get(f"cat:{name}"), effective_pct=round(eff * 100, 1)))
     order = {"REORDER_NOW": 0, "REVIEW": 1, "REORDER": 2, "PAUSE_ORDER": 3, "OK": 4}
     results.sort(key=lambda r: (order[r["status"]], r["weeks_cover"] if r["weeks_cover"] is not None else 99))
     return dict(as_of=as_of, month=month, festival=bool(is_fest), calendar_festival=bool(calendar_fest), demand_adj=demand_adj,
+                festival_name=fest_names.get(month, ""), calendar=festival_cal, festival_names=fest_names, category_stats=category_stats,
                 config=cfg, results=results,
                 sources=dict(stock=stock_source, open_orders=po_source), open_pos=open_po_detail or [],
                 anomalies=find_anomalies(series, skus, dists, simulate=("region", "Maharashtra", 0.22) if simulate_shift else (("dist", "DIST002", 0.35) if simulate_churn else None)))
