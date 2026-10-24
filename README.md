@@ -44,6 +44,7 @@ Checked against Zoho's published API docs; the three points marked (confirmed) w
 Layout: `public/index.html` (UI), `api/recommendations.py` (runs `engine.py` on `data/`), `api/overrides.py` (accept/override records in Postgres).
 
 ## More
+- `docs/components-map.svg`: components map (who does what, in order). Regenerate with `python3 docs/make_components_map.py`
 - `DECISION.md`: Nine Checks and Five Pre-Build Decisions
 - `BACKTEST.md`: first replay of the rules and its limits
 - `WALKTHROUGH.md`: demo script
