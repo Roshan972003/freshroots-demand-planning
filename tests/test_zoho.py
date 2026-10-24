@@ -28,6 +28,7 @@ def fake_http(method, url, headers=None, body=None):
 
 class T(unittest.TestCase):
     def setUp(self):
+        recommendations._ZC.update(t=0.0, data=None)
         _zoho._http = fake_http; _zoho._tok.update(v=None, exp=0); CALLS.clear()
         os.environ.update(ZOHO_CLIENT_ID="a", ZOHO_CLIENT_SECRET="b", ZOHO_REFRESH_TOKEN="c", ZOHO_ORG_ID="ORG",
                           ZOHO_DEFAULT_VENDOR_ID="V1")
@@ -79,6 +80,7 @@ if __name__ == "__main__":
 class MockMode(unittest.TestCase):
     """ZOHO_MODE=mock exercises the real client code against the in-app simulated Zoho."""
     def setUp(self):
+        recommendations._ZC.update(t=0.0, data=None)
         import importlib; importlib.reload(_zoho)
         for k in ("ZOHO_CLIENT_ID", "ZOHO_CLIENT_SECRET", "ZOHO_REFRESH_TOKEN", "ZOHO_ORG_ID", "ZOHO_SYNC_STOCK"): os.environ.pop(k, None)
         os.environ["ZOHO_MODE"] = "mock"; os.environ["ZOHO_ALLOW_DRAFT_PO"] = "true"
@@ -104,6 +106,7 @@ class MockMode(unittest.TestCase):
 class RealApiShapes(unittest.TestCase):
     """Behaviours taken from Zoho's documentation: missing stock field, purchaseorder_number retry, alternate wrapper key."""
     def setUp(self):
+        recommendations._ZC.update(t=0.0, data=None)
         import importlib; importlib.reload(_zoho)
         os.environ.pop("ZOHO_MODE", None)
         os.environ.update(ZOHO_CLIENT_ID="a", ZOHO_CLIENT_SECRET="b", ZOHO_REFRESH_TOKEN="c", ZOHO_ORG_ID="ORG", ZOHO_DEFAULT_VENDOR_ID="V1", ZOHO_ALLOW_DRAFT_PO="true")
@@ -153,3 +156,26 @@ class RealApiShapes(unittest.TestCase):
         _zoho._http = fake_http
         with self.assertRaises(_zoho.ZohoInputError): _zoho.create_draft_po("NOPE", 5, "data")
         with self.assertRaises(_zoho.ZohoInputError): _zoho.create_draft_po("SKU004", 0, "data")
+
+
+class Cache(unittest.TestCase):
+    def setUp(self):
+        import importlib; importlib.reload(_zoho)
+        os.environ.pop("ZOHO_MODE", None)
+        os.environ.update(ZOHO_CLIENT_ID="a", ZOHO_CLIENT_SECRET="b", ZOHO_REFRESH_TOKEN="c", ZOHO_ORG_ID="ORG", ZOHO_SYNC_STOCK="true")
+        _zoho._tok.update(v=None, exp=0); CALLS.clear(); recommendations._ZC.update(t=0.0, data=None)
+        _zoho._http = fake_http
+
+    def test_second_read_comes_from_cache_and_fresh_bypasses_it(self):
+        recommendations.build(); n = len(CALLS); self.assertGreater(n, 0)
+        r = recommendations.build(); self.assertEqual(len(CALLS), n)                      # no new Zoho calls
+        self.assertIn("cached_seconds", r["zoho"])
+        recommendations.build(fresh=True); self.assertGreater(len(CALLS), n)              # forced refresh
+
+    def test_zoho_failure_serves_last_good_read(self):
+        recommendations.build()
+        def boom(*a, **k): raise _zoho.ZohoError("down")
+        _zoho._http = boom; _zoho._tok.update(v=None, exp=0)
+        r = recommendations.build(fresh=True)
+        self.assertIn("down", r["zoho"]["error"]); self.assertIn("ago", r["zoho"]["error"])
+        self.assertEqual(r["sources"]["open_orders"], "zoho")                              # still the last good Zoho data

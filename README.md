@@ -25,6 +25,8 @@ Read-only by default: live open purchase orders count as stock. Falls back to th
 2. In Vercel > Settings > Environment Variables add: `ZOHO_CLIENT_ID`, `ZOHO_CLIENT_SECRET`, `ZOHO_REFRESH_TOKEN`, `ZOHO_ORG_ID` (Zoho Inventory > Settings > Organization Profile), and `ZOHO_DC` (`in` default, `com`, `eu`, `com.au`). Mark the secrets Sensitive.
 3. Optional: `ZOHO_SYNC_STOCK=true` (use Zoho stock instead of `current_inventory.csv`), `ZOHO_OPEN_PO_STATUSES` (default `open`), `ZOHO_ALLOW_DRAFT_PO=true` plus `ZOHO_DEFAULT_VENDOR_ID` (or `data/zoho_vendors.csv` with SKU_ID,Vendor_ID) to show a "Create draft PO in Zoho" button after a decision. Drafts only: a person reviews and issues them in Zoho.
 4. Zoho item SKU codes must match the SKU IDs here (SKU001...). Redeploy.
+A full Zoho read takes about 4 seconds, so the app reuses it for `ZOHO_CACHE_SECONDS` (default 45). Add `?fresh=1` to `/api/recommendations` to force a new read. If Zoho fails, the last good read is shown with a warning.
+
 Human-in-the-loop and festival-uplift tests (through the real handlers): `python3 -m unittest tests.test_hitl -v`.
 
 Tests with a mocked Zoho: `python3 -m unittest tests.test_zoho -v`. **Verified once against a real Zoho Inventory account (India data center) on 24 Oct 2026: items and stock read correctly, open POs read as ordered minus received, and a draft PO was created without a supplied PO number.**
