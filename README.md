@@ -27,13 +27,13 @@ Read-only by default: live open purchase orders count as stock. Falls back to th
 4. Zoho item SKU codes must match the SKU IDs here (SKU001...). Redeploy.
 Human-in-the-loop and festival-uplift tests (through the real handlers): `python3 -m unittest tests.test_hitl -v`.
 
-Tests with a mocked Zoho: `python3 -m unittest tests.test_zoho -v`. **Not yet run against a real Zoho account.**
+Tests with a mocked Zoho: `python3 -m unittest tests.test_zoho -v`. **Verified once against a real Zoho Inventory account (India data center) on 24 Oct 2026: items and stock read correctly, open POs read as ordered minus received, and a draft PO was created without a supplied PO number.**
 
-Checked against Zoho's published API docs, and what to watch on the first real run:
+Checked against Zoho's published API docs; the three points marked (confirmed) were also confirmed on that real run:
 - Auth header `Zoho-oauthtoken`, base `https://www.zohoapis.<dc>/inventory/v1`, `organization_id` on every call, 100 requests/minute per organization (the client reads at most `ZOHO_MAX_PO_DETAILS` purchase orders, default 60).
-- The items list may not include `stock_on_hand`. If it doesn't, stock sync raises and the app keeps the CSV stock and shows a warning, rather than treating missing stock as zero.
+- The items list may not include `stock_on_hand` (confirmed: it does for this account). If it doesn't, stock sync raises and the app keeps the CSV stock and shows a warning, rather than treating missing stock as zero.
 - Purchase orders are listed without a status filter (its values are undocumented); draft, cancelled and closed ones are skipped, and open units are `quantity - quantity_received` per line.
-- Zoho documents `purchaseorder_number` as required when creating a PO. The client first omits it (works with auto-numbering) and retries once with a generated `DP-<timestamp>` if Zoho rejects that.
+- Zoho documents `purchaseorder_number` as required when creating a PO (confirmed: auto-numbering accepted the request without one). The client first omits it (works with auto-numbering) and retries once with a generated `DP-<timestamp>` if Zoho rejects that.
 - Response wrapper keys `purchaseorder` and `purchase_order` are both accepted.
 
 ## Open purchase orders from CSV (used when Zoho is not configured)
