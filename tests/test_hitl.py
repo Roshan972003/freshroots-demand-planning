@@ -20,6 +20,10 @@ def call(port, method, path, body=None):
 class T(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        import importlib, _zoho                      # other test modules change Zoho state; start from a clean one
+        os.environ.update(TMPDIR=TMP, ZOHO_MODE="mock", ZOHO_ALLOW_DRAFT_PO="true")
+        for k in ("ZOHO_CLIENT_ID", "ZOHO_CLIENT_SECRET", "ZOHO_REFRESH_TOKEN", "ZOHO_ORG_ID", "ZOHO_SYNC_STOCK"): os.environ.pop(k, None)
+        importlib.reload(_zoho); _store.DATABASE_URL = None
         cls.srv = ThreadingHTTPServer(("127.0.0.1", 0), dev.Dev); cls.port = cls.srv.server_address[1]
         threading.Thread(target=cls.srv.serve_forever, daemon=True).start()
     @classmethod
