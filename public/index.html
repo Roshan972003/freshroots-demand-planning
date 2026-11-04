@@ -192,6 +192,8 @@ body{background:radial-gradient(700px 420px at 8% -5%,rgba(41,151,255,.18),trans
 .gbox .gin:focus{outline:2px solid var(--accent)}
 .gact{display:flex;gap:10px;justify-content:flex-end}
 @keyframes gpop{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:none}}
+.kbox{max-width:min(860px,100%)!important;max-height:86vh;overflow:auto}
+#mbox table{min-width:0;width:100%}#mbox td,#mbox th{padding:12px 10px}#mbox .wrap,#mbox .card{overflow-x:auto}
 </style>
 </head>
 <body>
@@ -272,7 +274,7 @@ body{background:radial-gradient(700px 420px at 8% -5%,rgba(41,151,255,.18),trans
 
 <div class="ov" id="ov"></div>
 <div id="toasts" aria-live="polite"></div>
-<div class="kov" id="modal"><div class="kbox" id="mbox" style="padding:16px;max-width:680px"></div></div>
+<div class="kov" id="modal"><div class="kbox" id="mbox" style="padding:28px"></div></div>
 <div class="kov" id="kov"><div class="kbox"><input id="kin" placeholder="Type a command or SKU…  (↑ ↓ Enter, Esc)" autocomplete="off"><ul id="kl"></ul></div></div>
 <div class="kov" id="help"><div class="kbox" style="padding:16px"><b>Keyboard shortcuts</b><table style="margin-top:8px">
 <tr><td><kbd>⌘/Ctrl K</kbd></td><td>Command menu</td></tr><tr><td><kbd>J</kbd> / <kbd>K</kbd></td><td>Next / previous SKU row</td></tr>
@@ -706,7 +708,7 @@ $('draft').onclick=async()=>{
   <td class="n num" style="${d.lq!==d.a.recommended_qty?'color:var(--bad);font-weight:700':''}">${d.lq}</td></tr>`).join('')}</tbody></table></div>
   ${block?`<div class="banner" style="margin-top:12px">Live demand differs from Monday's snapshot by up to ${worst.toFixed(0)}% (limit 10%). Single-click approval is blocked.</div>
     `:`<div class="okmsg">Live data is within 10% of Monday's snapshot.</div>`}
-  <label style="display:flex;gap:8px;align-items:center;margin:10px 0"><input type="checkbox" id="rv"> I, <b>${esc(approver()||'(set your name)')}</b>, have reviewed ${block?'the live delta and ':''}these ${rows.length} PO${rows.length===1?'':'s'} and approve raising them.</label>
+  <label style="display:flex;gap:12px;align-items:flex-start;margin:16px 0"><input type="checkbox" id="rv" style="width:20px;height:20px;margin:2px 0 0;flex:none"><span>I, <b>${esc(approver()||'(set your name)')}</b>, have reviewed ${block?'the live delta and ':''}these ${rows.length} PO${rows.length===1?'':'s'} and approve raising them.</span></label>
   <button class="p" id="go" disabled>${block?'Confirm adjusted order with Live Delta':'Approve &amp; create draft POs'}</button>
   <p class="tag">Drafts only${demo?', in the Zoho demo sandbox':''}: a person reviews and issues them in Zoho.</p><div id="gm"></div>`);
   $('mc').onclick=closeModal;$('rv').onchange=e=>{$('go').disabled=!e.target.checked||!approver()};
