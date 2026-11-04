@@ -108,8 +108,7 @@ header.top{background:color-mix(in srgb,var(--bg) 72%,transparent);-webkit-backd
 .logo{background:var(--ink);box-shadow:none;border-radius:12px}.logo svg{fill:var(--bg)}
 header.top h1{font-size:17px;font-weight:700;letter-spacing:-.02em}
 .card{border:0;border-radius:22px;box-shadow:none}
-header.top .mand{background:color-mix(in srgb,var(--panel) 70%,transparent);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);border-radius:16px}
-.mand{padding:12px 18px}header.top .mand{flex:1 1 360px;gap:12px}header.top .mand>div{min-width:110px;flex:1 1 110px}header.top{flex-wrap:nowrap}@media(max-width:1100px){header.top{flex-wrap:wrap}}
+.mand{padding:12px 18px}main>.mand{padding:20px 28px;margin-bottom:24px;gap:24px}main>.mand>div{min-width:200px}
 button{border-radius:980px;border:0;background:var(--inset);padding:9px 18px;font-weight:600;transition:background .15s,transform .15s}
 button:hover:not(:disabled){background:color-mix(in srgb,var(--inset) 70%,var(--mute));transform:none}
 button.p,button.sky{background:var(--ink);color:var(--bg);box-shadow:none}
@@ -164,7 +163,6 @@ select,input[type=date],.drawer input[type=text],.drawer input[type=number]{bord
 <header class="top">
   <div class="brand"><div class="logo"><svg viewBox="0 0 24 24" width="22" height="22" fill="#fff"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></div>
     <div><h1>Freshroots Demand Planning</h1><div class="sub" id="sub" style="margin:0">Loading…</div></div></div>
-  <div class="card mand" id="mandate"></div>
   <div class="ctl"><button id="kbtn" title="Command menu"><kbd>⌘K</kbd> Commands</button><button id="apv" title="The named person who approves decisions and POs"></button><span class="sw" id="fest" role="switch" tabindex="0"><i></i><span id="festLabel">Festival uplift +25%</span></span></div>
 </header>
 <nav class="tabs" id="tabs" role="tablist">
@@ -176,6 +174,7 @@ select,input[type=date],.drawer input[type=text],.drawer input[type=number]{bord
   <button data-tab="sim">What-if &amp; burn-down</button>
 </nav>
 <main>
+<div class="card mand" id="mandate"></div>
 <div class="pane" id="tab-demand">
 <section class="hero rv" aria-label="Overview">
   <div><span class="pill">The Rules Engine</span>
