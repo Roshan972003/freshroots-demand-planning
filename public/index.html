@@ -185,6 +185,13 @@ button.p:disabled{background:rgba(255,255,255,.08);color:var(--mute)}
 body{background:radial-gradient(700px 420px at 8% -5%,rgba(41,151,255,.18),transparent 70%),radial-gradient(640px 400px at 95% 8%,rgba(48,209,88,.14),transparent 70%),radial-gradient(700px 500px at 60% 105%,rgba(191,90,242,.14),transparent 70%),#000;background-attachment:fixed}
 }
 @media(prefers-reduced-motion:reduce){button,.kpi,.chip{transition:none}button:hover:not(:disabled),.kpi:hover{transform:none}}
+.gdlg{position:fixed;inset:0;z-index:100;display:grid;place-items:center;padding:20px;background:rgba(0,0,0,.35);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+.gbox{width:min(440px,100%);background:color-mix(in srgb,var(--panel) 88%,transparent);-webkit-backdrop-filter:blur(30px) saturate(180%);backdrop-filter:blur(30px) saturate(180%);border-radius:24px;padding:28px;box-shadow:0 30px 70px -20px rgba(0,0,0,.45);animation:gpop .25s cubic-bezier(.34,1.56,.64,1)}
+.gbox p{margin:0 0 16px;font-size:15px;line-height:1.5;font-weight:500}
+.gbox .gin{width:100%;font:inherit;padding:11px 14px;border-radius:12px;border:1px solid var(--inset);background:var(--bg);color:var(--ink);margin-bottom:16px}
+.gbox .gin:focus{outline:2px solid var(--accent)}
+.gact{display:flex;gap:10px;justify-content:flex-end}
+@keyframes gpop{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:none}}
 </style>
 </head>
 <body>
@@ -375,23 +382,38 @@ function drawer(){
 }
 function closeDr(){open=null;$('dr').classList.remove('on');$('dr2').classList.remove('on');$('ov').classList.remove('on');$('help').classList.remove('on');closeModal()}
 $('ov').onclick=closeDr;document.addEventListener('keydown',e=>{if(e.key==='Escape')closeDr()});
+// in-page dialogs: browsers and in-app viewers often block prompt/confirm/alert silently
+function ask(msg,o){return new Promise(res=>{
+  const w=document.createElement('div');w.className='gdlg';w.setAttribute('role','dialog');w.setAttribute('aria-modal','true');
+  w.innerHTML=`<div class="gbox"><p>${esc(msg)}</p>${o.input?'<input type="text" class="gin">':''}<div class="gact">${o.cancel?'<button type="button" data-x="0">Cancel</button>':''}<button type="button" class="p" data-x="1">${o.ok||'OK'}</button></div></div>`;
+  document.body.appendChild(w);const inp=w.querySelector('.gin');if(inp)inp.value=o.value||'';
+  const done=v=>{document.removeEventListener('keydown',kd,true);w.remove();res(v)};
+  const okv=()=>o.input?inp.value:true;
+  const kd=e=>{if(e.key==='Escape'){e.stopPropagation();done(o.input?null:false)}else if(e.key==='Enter'){e.preventDefault();done(okv())}};
+  document.addEventListener('keydown',kd,true);
+  w.querySelectorAll('button').forEach(b=>b.onclick=()=>done(b.dataset.x==='1'?okv():(o.input?null:false)));
+  setTimeout(()=>(inp||w.querySelector('button.p')).focus(),30);
+})}
+const uiPrompt=(m,v)=>ask(m,{input:1,value:v,cancel:1,ok:'Save'});
+const uiConfirm=m=>ask(m,{cancel:1,ok:'Confirm'});
+const uiAlert=m=>ask(m,{ok:'OK'});
 function approver(){try{return localStorage.getItem('approver')||''}catch(e){return ''}}
-function ensureApprover(force){
+async function ensureApprover(force){
   let a=approver();if(a&&!force)return a;
-  a=(prompt('Your name. A named person approves every decision and purchase order, and it is recorded.',a)||'').trim();
+  a=((await uiPrompt('Your name. A named person approves every decision and purchase order, and it is recorded.',a))||'').trim();
   if(!a)return '';try{localStorage.setItem('approver',a)}catch(e){}apvChip();return a;
 }
 function apvChip(){const a=approver();$('apv').innerHTML=a?`Approver: <b>${esc(a)}</b> ✎`:'Set approver'}
-$('apv').onclick=()=>ensureApprover(true);apvChip();
+$('apv').onclick=()=>{ensureApprover(true)};apvChip();
 async function post(body){
-  const by=ensureApprover();if(!by)return[false,{error:'A named approver is required.'}];
+  const by=await ensureApprover();if(!by)return[false,{error:'A named approver is required.'}];
   const res=await fetch('/api/overrides',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.assign({decided_by:by},body))});return[res.ok,await res.json()]}
 async function reconfirm(sku){
   const o=OV[sku];if(!o||o.decided_by)return[true,{}];
   const r=await post({as_of:D.as_of,sku,decision:o.decision,rec_status:o.rec_status,rec_qty:o.rec_qty,final_qty:o.final_qty,reason:o.reason||'',tag:o.tag||''});
   if(r[0])await refreshOv();return r;
 }
-async function zpo(sku,qty){const by=ensureApprover();if(!by)return[false,{error:'A named approver is required.'}];
+async function zpo(sku,qty){const by=await ensureApprover();if(!by)return[false,{error:'A named approver is required.'}];
   const res=await fetch('/api/zoho_po',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sku,qty,as_of:D.as_of,approver:by})});return[res.ok,await res.json()]}
 async function refreshOv(){OV={};(await (await fetch('/api/overrides?as_of='+D.as_of)).json()).forEach(x=>OV[x.sku]=x)}
 async function save(r,decision){
@@ -400,13 +422,13 @@ async function save(r,decision){
   const[okk,j]=await post(b);msg=okk?'':(j.error||'Save failed');ok=okk?'Saved.':'';if(okk)await refreshOv();render();
 }
 async function draftPo(sku,qty){
-  if(!confirm(`Create a DRAFT purchase order for ${qty} units of ${sku}${D.zoho.mode==='demo'?' in the Zoho DEMO sandbox':' in Zoho'}? A person still reviews and issues it.`))return;
+  if(!(await uiConfirm(`Create a DRAFT purchase order for ${qty} units of ${sku}${D.zoho.mode==='demo'?' in the Zoho DEMO sandbox':' in Zoho'}? A person still reviews and issues it.`)))return;
   const rc=await reconfirm(sku);if(!rc[0]){msg=rc[1].error||'Could not record your approval';render();return}
   const[rok,j]=await zpo(sku,qty);msg=rok?'':(j.error||'Zoho request failed');ok=rok?`Draft ${j.purchaseorder_number||j.purchaseorder_id} created (${j.status}), approved by ${esc(approver())}.`:'';await loadPoLog();render();
 }
 $('draft').onclick=async()=>{
   const rows=[...sel].map(s=>D.results.find(r=>r.sku===s)).filter(r=>r&&actionable(r));
-  if(!rows.length||!confirm(`Accept the recommendation and create ${rows.length} draft PO(s)${D.zoho.mode==='demo'?' in the Zoho DEMO sandbox':''}? Drafts are reviewed and issued by a person in Zoho.`))return;
+  if(!rows.length||!(await uiConfirm(`Accept the recommendation and create ${rows.length} draft PO(s)${D.zoho.mode==='demo'?' in the Zoho DEMO sandbox':''}? Drafts are reviewed and issued by a person in Zoho.`)))return;
   let done=0,fail=[];
   for(const r of rows){
     let qty=r.recommended_qty;
@@ -743,8 +765,8 @@ function mandate(){
   <div><small>Quarterly loss reduction</small><b class="num">${sv?'₹'+esc(sv)+'L measured':'Not measured yet'}</b> <span class="tag">baseline ₹28–34L/qtr</span> <button data-set="savings_lakh">Edit</button></div>`;
   document.querySelectorAll('[data-set]').forEach(b=>b.onclick=async()=>{
     const k=b.dataset.set,label={start_date:'Mandate start date (YYYY-MM-DD)',budget_spent_lakh:'Budget spent so far, in ₹ lakhs',savings_lakh:'Measured savings so far, in ₹ lakhs (leave blank until measured)'}[k];
-    const v=prompt(label,ST[k]||'');if(v===null)return;
-    if(k==='start_date'&&v&&isNaN(new Date(v)))return alert('Use YYYY-MM-DD.');
+    const v=await uiPrompt(label,ST[k]||'');if(v===null)return;
+    if(k==='start_date'&&v&&isNaN(new Date(v)))return uiAlert('Use YYYY-MM-DD.');
     await fetch('/api/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:k,value:v.trim()})});ST[k]=v.trim();mandate()});
 }
 
@@ -807,9 +829,9 @@ function poUi(){
 // ---- festival plan: which categories and products rise, and by how much
 let UP={};
 async function setUplift(scope,pct,note){
-  const by=ensureApprover();if(!by)return;
+  const by=await ensureApprover();if(!by)return;
   const res=await fetch('/api/uplift',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({scope,pct,by,note:note||''})});
-  if(!res.ok){alert((await res.json()).error||'Could not save');return}await load();
+  if(!res.ok){await uiAlert((await res.json()).error||'Could not save');return}await load();
 }
 async function clearUplift(scope){await fetch('/api/uplift?scope='+encodeURIComponent(scope),{method:'DELETE'});await load()}
 function festUi(){
@@ -834,9 +856,9 @@ function festUi(){
   <td><input type="number" step="1" min="-50" max="150" data-s="${r.sku}" placeholder="${r.festival_uplift}" style="width:80px;font:inherit;padding:4px 6px;border-radius:6px;border:1px solid var(--inset);background:var(--bg);color:var(--ink)"> <button data-ss="${r.sku}">Set</button>${r.uplift_source==='sku'?` <button data-sr="${r.sku}">Reset</button>`:''}</td></tr>`).join('')}</tbody></table></div>
   <p class="note">Changing an uplift re-runs the rules at once, so reorder quantities follow. Every change records who made it. Purchase orders still need a named person's approval.</p>`;
   const val=sel=>{const v=document.querySelector(sel);return v&&v.value!==''?parseFloat(v.value):null};
-  document.querySelectorAll('[data-cs]').forEach(b=>b.onclick=()=>{const v=val(`[data-c="${b.dataset.cs}"]`);if(v==null)return alert('Type a percentage first.');setUplift('cat:'+b.dataset.cs,v,'category')});
+  document.querySelectorAll('[data-cs]').forEach(b=>b.onclick=async()=>{const v=val(`[data-c="${b.dataset.cs}"]`);if(v==null)return uiAlert('Type a percentage first.');setUplift('cat:'+b.dataset.cs,v,'category')});
   document.querySelectorAll('[data-cr]').forEach(b=>b.onclick=()=>clearUplift('cat:'+b.dataset.cr));
-  document.querySelectorAll('[data-ss]').forEach(b=>b.onclick=()=>{const v=val(`[data-s="${b.dataset.ss}"]`);if(v==null)return alert('Type a percentage first.');setUplift('sku:'+b.dataset.ss,v,'product')});
+  document.querySelectorAll('[data-ss]').forEach(b=>b.onclick=async()=>{const v=val(`[data-s="${b.dataset.ss}"]`);if(v==null)return uiAlert('Type a percentage first.');setUplift('sku:'+b.dataset.ss,v,'product')});
   document.querySelectorAll('[data-sr]').forEach(b=>b.onclick=()=>clearUplift('sku:'+b.dataset.sr));
 }
 
