@@ -158,7 +158,7 @@ select,input[type=date],.drawer input[type=text],.drawer input[type=number]{bord
 .rv.in{opacity:1;transform:none}
 @media(prefers-reduced-motion:reduce){.rv{opacity:1;transform:none;transition:none}}
 /* Liquid glass buttons */
-body{background:radial-gradient(700px 420px at 8% -5%,rgba(0,113,227,.16),transparent 70%),radial-gradient(640px 400px at 95% 8%,rgba(52,199,89,.15),transparent 70%),radial-gradient(700px 500px at 60% 105%,rgba(175,82,222,.12),transparent 70%),var(--bg);background-attachment:fixed}
+body{background:radial-gradient(700px 420px at 8% -5%,rgba(0,113,227,.16),transparent 70%),radial-gradient(640px 400px at 95% 8%,rgba(52,199,89,.15),transparent 70%),radial-gradient(700px 500px at 60% 105%,rgba(175,82,222,.12),transparent 70%),var(--bg);}
 button,header.top button{background:linear-gradient(180deg,rgba(255,255,255,.78),rgba(255,255,255,.42));color:var(--ink);border:1px solid rgba(255,255,255,.7);-webkit-backdrop-filter:blur(18px) saturate(180%);backdrop-filter:blur(18px) saturate(180%);box-shadow:0 1px 0 rgba(255,255,255,.9) inset,0 -1px 0 rgba(0,0,0,.04) inset,0 6px 16px -6px rgba(0,0,0,.22),0 1px 3px rgba(0,0,0,.08);transition:transform .22s cubic-bezier(.34,1.56,.64,1),box-shadow .22s,background .2s}
 button:hover:not(:disabled){transform:translateY(-2px) scale(1.04);background:linear-gradient(180deg,rgba(255,255,255,.95),rgba(255,255,255,.6));box-shadow:0 1px 0 rgba(255,255,255,1) inset,0 14px 26px -8px rgba(0,0,0,.3),0 2px 6px rgba(0,0,0,.1)}
 button:active:not(:disabled){transform:translateY(0) scale(.97);box-shadow:0 1px 0 rgba(255,255,255,.6) inset,0 2px 6px -2px rgba(0,0,0,.25);transition-duration:.08s}
@@ -182,7 +182,7 @@ button.p:disabled{background:rgba(255,255,255,.08);color:var(--mute)}
 .tabs button:hover:not(:disabled){background:rgba(255,255,255,.12)}
 .chip{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.16)}
 .card,.kpi{background:rgba(29,29,31,.72);box-shadow:0 1px 0 rgba(255,255,255,.08) inset}.kpi:hover{background:rgba(44,44,46,.9)}
-body{background:radial-gradient(700px 420px at 8% -5%,rgba(41,151,255,.18),transparent 70%),radial-gradient(640px 400px at 95% 8%,rgba(48,209,88,.14),transparent 70%),radial-gradient(700px 500px at 60% 105%,rgba(191,90,242,.14),transparent 70%),#000;background-attachment:fixed}
+body{background:radial-gradient(700px 420px at 8% -5%,rgba(41,151,255,.18),transparent 70%),radial-gradient(640px 400px at 95% 8%,rgba(48,209,88,.14),transparent 70%),radial-gradient(700px 500px at 60% 105%,rgba(191,90,242,.14),transparent 70%),#000;}
 }
 @media(prefers-reduced-motion:reduce){button,.kpi,.chip{transition:none}button:hover:not(:disabled),.kpi:hover{transform:none}}
 .gdlg{position:fixed;inset:0;z-index:100;display:grid;place-items:center;padding:20px;background:rgba(0,0,0,.35);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
@@ -194,6 +194,18 @@ body{background:radial-gradient(700px 420px at 8% -5%,rgba(41,151,255,.18),trans
 @keyframes gpop{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:none}}
 .kbox{max-width:min(860px,100%)!important;max-height:86vh;overflow:auto}
 #mbox table{min-width:0;width:100%}#mbox td,#mbox th{padding:12px 10px}#mbox .wrap,#mbox .card{overflow-x:auto}
+/* performance: blur only on the nav and dialogs; no per-card/per-button blur, no fixed background */
+button,header.top button,.card,.kpi,.chip,.tabs button.on,.tabs button{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+.card,.kpi{background:var(--panel)}
+button{background:linear-gradient(180deg,#fff,#f1f1f4)}
+.kpi,.card{will-change:auto}
+.rv{will-change:auto}
+@media(prefers-color-scheme:dark){.card,.kpi{background:#1D1D1F}.kpi:hover{background:#2c2c2e}button{background:linear-gradient(180deg,#3a3a3c,#2a2a2c)}button.p,button.sky,.tabs button.on{background:linear-gradient(180deg,#fff,#e1e1e6)}button.p:disabled{background:#2a2a2c}}
+.tabs button:not(.on){background:transparent}
+button.p,button.sky,.tabs button.on{background:linear-gradient(180deg,#3c3c40,#141416)}
+button.p:disabled{background:#ececf0;color:var(--mute)}
+.drawer:not(.on){-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+@media(prefers-color-scheme:dark){.tabs button:not(.on){background:transparent}button.p,button.sky,.tabs button.on{background:linear-gradient(180deg,#fff,#e1e1e6);color:#1D1D1F}button.p:disabled{background:#2a2a2c;color:var(--mute)}}
 </style>
 </head>
 <body>
