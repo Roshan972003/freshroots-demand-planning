@@ -206,6 +206,18 @@ button.p,button.sky,.tabs button.on{background:linear-gradient(180deg,#3c3c40,#1
 button.p:disabled{background:#ececf0;color:var(--mute)}
 .drawer:not(.on){-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
 @media(prefers-color-scheme:dark){.tabs button:not(.on){background:transparent}button.p,button.sky,.tabs button.on{background:linear-gradient(180deg,#fff,#e1e1e6);color:#1D1D1F}button.p:disabled{background:#2a2a2c;color:var(--mute)}}
+@media(max-width:700px){
+header.top{position:static;padding:14px 16px;gap:10px}
+header.top .sub{display:none}
+.tabs{padding:12px 16px 0;position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--bg) 85%,transparent);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px)}
+main{padding:20px 16px 100px}
+.hero{padding:32px 24px;border-radius:24px}.hero h2{font-size:32px}.hero p{font-size:15px}
+.kpi{padding:20px}.kpi b{font-size:34px}
+main>.mand{padding:18px 20px}
+.sec h2{font-size:22px}.sec .card{padding:18px}
+.gbox{padding:22px}
+td{padding:14px 10px}th{padding:12px 10px}.card.wrap{padding:6px}
+}
 </style>
 </head>
 <body>
