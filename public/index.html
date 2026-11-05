@@ -725,7 +725,7 @@ $('draft').onclick=async()=>{
   const worst=Math.max(...data.map(d=>Math.abs(d.dr))),block=worst>10,simW=live.anomalies&&live.anomalies.simulated;
   const demo=D.zoho&&D.zoho.mode==='demo';
   openModal(`<div style="display:flex;justify-content:space-between"><h2 style="margin:0">Pre-flight check: ${rows.length} PO${rows.length===1?'':'s'}</h2><button id="mc">Cancel</button></div>
-  <div class="tag" style="margin:4px 0 10px">Monday snapshot (${esc(snap.as_of)} plan) vs live signals (latest mid-week regional shift)${simW?' <span class="badge b-info">SIMULATED SHIFT</span>':''}. There is no live SAP feed: the live side recomputes the rules with the mid-week shift.</div>
+  <div class="tag" style="margin:4px 0 10px">Monday snapshot (${esc(snap.as_of)} plan) vs live signals (latest mid-week regional shift)${simW?' <span class="badge b-info">SIMULATED SHIFT</span>':''}. Sales history comes from the SAP export, not a live feed. Stock and open POs come from Zoho. The live side recomputes the rules with the mid-week shift.</div>
   <div class="wrap"><table><thead><tr><th>SKU</th><th class="n">Monday qty</th><th class="n">Monday rate/wk</th><th class="n">Live rate/wk</th><th class="n">Δ demand</th><th class="n">Live qty</th></tr></thead><tbody>
   ${data.map(d=>`<tr><td><b>${esc(d.r.name.replace('Freshroots ',''))}</b><br><span class="id mono">${d.r.sku}</span></td><td class="n num">${d.a.recommended_qty}</td><td class="n num">${d.a.demand_rate}</td>
   <td class="n num" style="${d.hot&&d.dr<0?'color:var(--bad);font-weight:700':''}">${d.b.demand_rate}</td><td class="n num" style="${d.hot?(d.dr<0?'color:var(--bad);font-weight:700':'color:var(--warn);font-weight:700'):''}">${d.dr>0?'+':''}${d.dr.toFixed(1)}%</td>
@@ -777,7 +777,7 @@ function bullets(e){
 function exec(){
   const e=execStats(),b=bullets(e);
   $('sumc').innerHTML=`<b>Executive summary</b> <span class="tag">auto-generated from the data by rules, not an LLM</span><ul>${b.map(x=>`<li>${esc(x)}</li>`).join('')}</ul><button class="p" id="ceo">Download CEO weekly report</button> <span class="tag">Emailing needs an email integration, which is not connected.</span>`;
-  $('mt').innerHTML=e.m.map(([l,v,s])=>`<div class="card"><span>${esc(l)}</span><b class="num">${esc(v)}</b><span>${esc(s)}</span></div>`).join('')+`<div class="tag" style="grid-column:1/-1">The case's other metrics (fulfilment rate, overstock value, distributor complaints) need SAP and WhatsApp data that this build does not have.</div>`;
+  $('mt').innerHTML=e.m.map(([l,v,s])=>`<div class="card"><span>${esc(l)}</span><b class="num">${esc(v)}</b><span>${esc(s)}</span></div>`).join('')+`<div class="tag" style="grid-column:1/-1">The case's other metrics (fulfilment rate, overstock value, distributor complaints) need order and WhatsApp data that this build does not have.</div>`;
   $('ceo').onclick=()=>{
     const t=`# Freshroots weekly operations report\nInventory as of ${D.as_of} · month ${D.month}\n\n## Summary\n${b.map(x=>'- '+x).join('\n')}\n\n## Metrics\n${e.m.map(([l,v,s])=>`- ${l}: ${v} (${s})`).join('\n')}\n\n## Reorder actions\n${e.R.filter(actionable).map(r=>`- ${r.name}: ${r.recommended_qty} units (${r.weeks_cover} wks cover)`).join('\n')||'- none'}\n`;
     const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([t],{type:'text/markdown'}));a.download=`ceo_weekly_report_${D.as_of}.md`;a.click()};
@@ -842,7 +842,7 @@ async function mvl(){
   <div class="card ${A.regions.length?'glow-warn':''}" style="padding:14px"><b>Live signals</b> ${A.simulated?'<span class="badge b-info">SIMULATED</span>':''} <span class="tag">latest mid-week regional shift applied</span>
     <div class="cmp" style="margin-top:10px"><div><span>Regional shift</span><b class="num" style="${A.regions.length?'color:var(--bad)':''}">${A.regions.length?A.regions.map(g=>g.region+' '+g.change_pct+'%').join(', '):'none'}</b></div><div><span>Units to order (live)</span><b class="num">${tot(l)}</b></div></div>
     <div class="tag" style="margin-top:8px">${aff.length} open PO(s) on affected SKUs${ch.length?` · quantity changes: ${ch.map(r=>`${esc(r.name.replace('Freshroots ',''))} ${actionable(sq[r.sku])?sq[r.sku].recommended_qty:0}→${actionable(r)?r.recommended_qty:0}`).join(', ')}`:' · no quantity changes'}</div>
-    <div class="tag">No live SAP feed: "live" = current stock and POs plus the latest mid-week signal in the sales data.</div></div>`;
+    <div class="tag">Sales history is the SAP export (no live feed). Stock and POs come from Zoho. "Live" = current Zoho stock and POs plus the latest mid-week signal in the sales data.</div></div>`;
 }
 
 // ---- PO audit log
