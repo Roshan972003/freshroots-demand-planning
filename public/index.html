@@ -555,21 +555,28 @@ function burnUi(){
   const T=8,lo=r.min_weeks,hi=r.max_weeks,rec=r.recommended_qty||0,on=r.on_order||0,up=(r.festival_uplift||0)/100,base=(r.avg12||r.demand_rate)*(1+(D.demand_adj||0));
   const festAt=t=>{const d=new Date(D.as_of+'T00:00:00');d.setDate(d.getDate()+7*t);const ym=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');return{f:!!(D.calendar&&D.calendar[ym]),ym}};
   const rateAt=t=>base*(1+(festAt(t).f?up:0)),R=rateAt(0);
-  const run=(add)=>{let s=r.stock,out=[s/rateAt(0)];for(let t=1;t<=T;t++){s=Math.max(0,s-rateAt(t));if(t===1)s+=on;if(add&&t===lead)s+=rec;out.push(s/rateAt(t))}return out};
-  const A=run(false),B=run(true),ymax=Math.max(hi*1.5,lo*2,...A,...B)*1.05;
+  // week t (t-1 to t) burns at that week's rate; on-order lands after week 1, a new order after week `lead`
+  const run=(qty)=>{let s=r.stock,lost=0,so=null,sbf=0,out=[s/rateAt(0)];
+    for(let t=1;t<=T;t++){const d=rateAt(t-1);
+      if(s<d){if(so===null)so=(t-1)+s/d;lost+=d-s;s=0}else s-=d;
+      if(t===1)s+=on;if(t===lead)sbf=s;if(qty&&t===lead)s+=qty;
+      out.push(s/rateAt(t))}
+    return{out,so,lost,sbf}};
+  const A=run(0),B=run(rec),ymax=Math.max(hi*1.5,lo*2,...A.out,...B.out)*1.05;
+  const nq=Math.ceil(Math.max(0,hi*rateAt(lead)-A.sbf)/10)*10,need=rec&&nq>rec*1.05?nq:null;
   const W=720,H=260,L=44,Rt=12,Tp=10,Bt=32,x=t=>L+t/T*(W-L-Rt),y=v=>Tp+(1-Math.min(v,ymax)/ymax)*(H-Tp-Bt);
   const band=(a,b,c)=>`<rect x="${L}" y="${y(b)}" width="${W-L-Rt}" height="${y(a)-y(b)}" style="fill:var(${c})"/>`;
   const line=(v,st)=>`<polyline fill="none" style="${st}" stroke-width="2.5" points="${v.map((q,t)=>x(t)+','+y(q)).join(' ')}"/>`;
-  const so=v=>{const i=v.findIndex(q=>q<=0.001);return i>0?i:null},sa=so(A),sb=so(B);
+  const sa=A.so,sb=B.so;
   const ticks=[0,lo,hi].concat(ymax>hi*1.4?[Math.round(ymax)]:[]);
   $('burn').innerHTML=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;color:var(--ink)" role="img" aria-label="Projected weeks of cover over 8 weeks">
   ${band(0,lo,'--badbg')}${band(lo,hi,'--brandbg')}${band(hi,ymax,'--warnbg')}
   ${ticks.map(v=>`<text x="${L-6}" y="${y(v)+4}" text-anchor="end" font-size="11" style="fill:var(--mute)" class="mono">${+v.toFixed?+(+v).toFixed(1):v}</text>`).join('')}
   ${[0,2,4,6,8].map(t=>`<text x="${x(t)}" y="${H-12}" text-anchor="middle" font-size="11" style="fill:var(--mute)" class="mono">wk ${t}</text>`).join('')}
-  ${line(A,'stroke:var(--mute);stroke-dasharray:5 4')}${line(B,'stroke:var(--brand)')}
-  ${sa?`<circle cx="${x(sa)}" cy="${y(0)}" r="5" style="fill:var(--bad)"/>`:''}</svg>
+  ${line(A.out,'stroke:var(--mute);stroke-dasharray:5 4')}${line(B.out,'stroke:var(--brand)')}
+  ${sa!==null?`<circle cx="${x(sa)}" cy="${y(0)}" r="5" style="fill:var(--bad)"/>`:''}</svg>
   <div class="tag">Demand follows the calendar: festival weeks use this SKU's ${(up*100).toFixed(0)}% uplift (${esc(r.uplift_source)}), other weeks the 12-week average.</div><div class="tag"><span style="color:var(--bad)">■</span> below ${lo} wks (stockout risk) · <span style="color:var(--brand)">■</span> ${lo}–${hi} wks (safe) · <span style="color:var(--warn)">■</span> above ${hi} wks (overstock) · dashed = no new order · solid = recommended ${rec} units arriving week ${lead}${on?` · ${on} units on order assumed week 1`:''}</div>
-  <div style="margin-top:6px">${sa?`Without a new order this SKU runs out in <b>week ${sa}</b>.`:'No stockout within 8 weeks without a new order.'} ${rec?(sb?`Even with the recommended order it runs out in <b>week ${sb}</b>: a ${lead}-week lead time is too slow.`:'With the recommended order it stays in stock.'):''}</div>`;
+  <div style="margin-top:6px">${sa!==null?`Without a new order this SKU runs out around <b>day ${Math.round(sa*7)}</b> (week ${Math.ceil(sa)}), about <b>${Math.round(A.lost)}</b> units short over ${T} weeks.`:'No stockout within 8 weeks without a new order.'} ${rec?(sb!==null?`With the recommended ${rec} units it still runs out around <b>day ${Math.round(sb*7)}</b>, ${sb<lead?`before the order lands: a ${lead}-week lead time is too slow`:'even after the order lands: the quantity does not last'}${need?`. Sized for the lead time, about <b>${need}</b> units would land at ${hi} weeks of cover`:''}.`:'With the recommended order it stays in stock.'):''}</div>`;
 }
 
 // ---- toasts + pause with 10 s undo
@@ -774,13 +781,47 @@ function bullets(e){
   b.push(e.A.regions.length||ch.length?`Signals: ${[...e.A.regions.map(r=>`${r.region} order volume ${r.change_pct}% vs the 4-week average`),...ch.map(d=>`${d.name} down ${Math.abs(d.change_pct)}% (churn risk)`)].join('; ')}${e.A.simulated?' (simulated)':''}.`:`Signals: no regional demand shift or distributor drop beyond the thresholds this week.`);
   return b;
 }
+function reportHtml(e,b){
+  const R=e.R,nm=r=>esc(r.name.replace('Freshroots ','')),ST_=ST||{};
+  const money=v=>v?'₹'+esc(v)+'L':'not entered';
+  const stl={REORDER_NOW:['Reorder now','#d70015'],REORDER:['Reorder','#d70015'],PAUSE_ORDER:['Pause orders','#b25e00'],REVIEW:['Needs review','#6e56cf'],OK:['OK','#1f8a3b']};
+  const act=R.filter(r=>r.status!=='OK').sort((x,y)=>(actionable(y)-actionable(x))||x.weeks_cover-y.weeks_cover);
+  const dec=r=>{const o=OV[r.sku];return o&&o.decided_by?`${o.decision==='overridden'?'Overridden':'Accepted'} by ${esc(o.decided_by)}${o.final_qty!=null?' ('+o.final_qty+' units)':''}`:(actionable(r)?'Awaiting approval':'—')};
+  const rows=act.map(r=>`<tr><td><b>${nm(r)}</b><br><span class="m">${esc(r.sku)} · ${esc(r.category)}${r.perishability==='High'?' · perishable':''}</span></td><td><span class="pill" style="color:${(stl[r.status]||['',''])[1]};background:${(stl[r.status]||['',''])[1]}1f">${esc((stl[r.status]||[r.status])[0])}</span></td><td class="n">${r.stock}</td><td class="n">${r.weeks_cover??'–'}</td><td class="n">${r.on_order||0}</td><td class="n"><b>${actionable(r)?r.recommended_qty:'–'}</b></td><td>${dec(r)}</td></tr>`).join('');
+  const cats=(D.category_stats||[]).map(c=>`<tr><td>${esc(c.category)}</td><td class="n">${c.effective_pct}%</td><td class="n">${c.observed_lift_pct>0?'+':''}${c.observed_lift_pct}%</td><td>${c.override_pct!=null?'Planner set':'Default rule'}</td></tr>`).join('');
+  const pos=(POL||[]).map(p=>`<tr><td>${esc(p.po_number)}</td><td>${esc(p.sku)}</td><td class="n">${p.qty}</td><td>${esc(p.approved_by)}</td><td>${esc(p.zoho_status)}</td></tr>`).join('');
+  const open_=D.open_pos.map(p=>`<tr><td>${esc(p.po)}</td><td>${esc(p.sku)}</td><td class="n">${p.qty}</td></tr>`).join('');
+  const kp=[['Stockout risk',e.so.length,'#d70015'],['Overstock risk',e.ov.length,'#b25e00'],['High demand',e.hd.length,'#b25e00'],['Reorder units',R.reduce((a2,r)=>a2+(actionable(r)?r.recommended_qty:0),0),'#1D1D1F'],['Units on order',D.open_pos.reduce((a2,p)=>a2+p.qty,0),'#1D1D1F'],['Avg cover (wks)',(e.m[6]||[])[1],'#1D1D1F']];
+  const fest=D.festival_name?`${esc(D.festival_name)}${D.calendar_festival?' (festival uplift in force)':''}`:'No festival this month';
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Freshroots weekly operations report ${esc(D.as_of)}</title><style>
+*{box-sizing:border-box}body{margin:0;background:#F5F5F7;color:#1D1D1F;font:14px/1.5 Inter,-apple-system,"SF Pro Display",system-ui,sans-serif;letter-spacing:-.01em;-webkit-font-smoothing:antialiased}
+.pg{max-width:880px;margin:0 auto;padding:40px 24px 60px}
+.hero{background:#000;color:#F5F5F7;border-radius:24px;padding:40px 36px;margin-bottom:20px}.hero small{color:#2997FF;font-weight:600}.hero h1{font-size:34px;line-height:1.08;letter-spacing:-.03em;margin:8px 0 10px}.hero p{color:#a1a1a6;margin:0}
+.k{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px}.k div{background:#fff;border-radius:18px;padding:18px 20px}.k b{display:block;font-size:30px;letter-spacing:-.03em;line-height:1.1}.k span{color:#6e6e73;font-size:12px}
+section{background:#fff;border-radius:20px;padding:24px 26px;margin-bottom:16px}h2{font-size:18px;margin:0 0 12px;letter-spacing:-.02em}ul{margin:0;padding-left:20px}li{margin:6px 0}
+table{width:100%;border-collapse:collapse}th{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#6e6e73;text-align:left;padding:8px 8px;border-bottom:1px solid #e8e8ed}td{padding:12px 8px;border-bottom:1px solid #f0f0f3;vertical-align:top}tr:last-child td{border:0}.n{text-align:right;font-variant-numeric:tabular-nums}.m{color:#6e6e73;font-size:12px}
+.pill{display:inline-block;padding:3px 10px;border-radius:99px;font-size:11px;font-weight:700;white-space:nowrap}.note{color:#6e6e73;font-size:12px;margin-top:10px}
+button{font:inherit;font-weight:600;border:0;border-radius:99px;background:#1D1D1F;color:#fff;padding:10px 20px;cursor:pointer}
+@media(max-width:640px){.k{grid-template-columns:repeat(2,1fr)}.hero{padding:28px 22px}.hero h1{font-size:26px}table{font-size:12px}}
+@media print{body{background:#fff}.pg{padding:0}button{display:none}section,.k div{break-inside:avoid;border:1px solid #e8e8ed}.hero{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+</style></head><body><div class="pg">
+<div class="hero"><small>Freshroots · Weekly operations report</small><h1>${e.so.length?`${e.so.length} SKU${e.so.length===1?'':'s'} need reordering now.`:'Stock is healthy this week.'}</h1><p>Inventory as of ${esc(D.as_of)} · ${fest}. Prepared from ${D.sources&&D.sources.stock==='zoho'?'Zoho stock and open orders':'the stock and open-order files'}, and the SAP sales export.</p></div>
+<div class="k">${kp.map(([l,v,c])=>`<div><b style="color:${c}">${esc(v)}</b><span>${esc(l)}</span></div>`).join('')}</div>
+<section><h2>This week at a glance</h2><ul>${b.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></section>
+<section><h2>Where action is needed</h2>${rows?`<table><thead><tr><th>SKU</th><th>Status</th><th class="n">Stock</th><th class="n">Cover (wks)</th><th class="n">On order</th><th class="n">Reorder qty</th><th>Decision</th></tr></thead><tbody>${rows}</tbody></table>`:'<p>No SKU needs action.</p>'}<div class="note">Every purchase order needs a named person's approval before a draft is raised in Zoho. A person issues it there.</div></section>
+<section><h2>Festival demand plan</h2><p style="margin:0 0 10px">${fest}. Uplift by category:</p><table><thead><tr><th>Category</th><th class="n">Uplift in force</th><th class="n">Observed, last 4 wks</th><th>Source</th></tr></thead><tbody>${cats}</tbody></table><div class="note">Uplifts are planner inputs, not measurements. Check them against last year's festival sales once the 3-year history is loaded.</div></section>
+<section><h2>Purchase orders</h2><p style="margin:0 0 8px"><b>Open in Zoho</b></p>${open_?`<table><thead><tr><th>PO</th><th>SKU</th><th class="n">Qty</th></tr></thead><tbody>${open_}</tbody></table>`:'<p class="m">None open.</p>'}<p style="margin:16px 0 8px"><b>Drafts raised from this tool (audit log)</b></p>${pos?`<table><thead><tr><th>PO</th><th>SKU</th><th class="n">Qty</th><th>Approved by</th><th>Status</th></tr></thead><tbody>${pos}</tbody></table>`:'<p class="m">None raised.</p>'}<div class="note">The audit log records what this tool raised. Confirm each draft's current status in Zoho.</div></section>
+<section><h2>90-day mandate</h2><ul><li>Start date: ${esc(ST_.start_date||'not set')}</li><li>Budget used: ${money(ST_.budget_spent_lakh)} of ₹15.0L</li><li>Quarterly loss reduction: ${ST_.savings_lakh?'₹'+esc(ST_.savings_lakh)+'L measured':'not measured yet'} (baseline ₹28–34L a quarter)</li></ul></section>
+<section><h2>Limits of this report</h2><ul><li>Sales history is the SAP export, not a live feed.</li><li>Fulfilment rate, overstock value and distributor complaints need order and WhatsApp data this build does not have.</li><li>The WhatsApp support queue in the app is sample data.</li></ul></section>
+<p style="text-align:center"><button onclick="window.print()">Print or save as PDF</button></p>
+</div></body></html>`;
+}
 function exec(){
   const e=execStats(),b=bullets(e);
-  $('sumc').innerHTML=`<b>Executive summary</b> <span class="tag">auto-generated from the data by rules, not an LLM</span><ul>${b.map(x=>`<li>${esc(x)}</li>`).join('')}</ul><button class="p" id="ceo">Download CEO weekly report</button> <span class="tag">Emailing needs an email integration, which is not connected.</span>`;
+  $('sumc').innerHTML=`<b>Executive summary</b> <span class="tag">auto-generated from the data by rules, not an LLM</span><ul>${b.map(x=>`<li>${esc(x)}</li>`).join('')}</ul><div class="bar" style="margin:6px 0 0"><button class="p" id="ceoView">Preview CEO weekly report</button><button id="ceo">Download report (.html)</button></div><span class="tag">Emailing needs an email integration, which is not connected.</span>`;
   $('mt').innerHTML=e.m.map(([l,v,s])=>`<div class="card"><span>${esc(l)}</span><b class="num">${esc(v)}</b><span>${esc(s)}</span></div>`).join('')+`<div class="tag" style="grid-column:1/-1">The case's other metrics (fulfilment rate, overstock value, distributor complaints) need order and WhatsApp data that this build does not have.</div>`;
-  $('ceo').onclick=()=>{
-    const t=`# Freshroots weekly operations report\nInventory as of ${D.as_of} · month ${D.month}\n\n## Summary\n${b.map(x=>'- '+x).join('\n')}\n\n## Metrics\n${e.m.map(([l,v,s])=>`- ${l}: ${v} (${s})`).join('\n')}\n\n## Reorder actions\n${e.R.filter(actionable).map(r=>`- ${r.name}: ${r.recommended_qty} units (${r.weeks_cover} wks cover)`).join('\n')||'- none'}\n`;
-    const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([t],{type:'text/markdown'}));a.download=`ceo_weekly_report_${D.as_of}.md`;a.click()};
+  $('ceoView').onclick=()=>{const f=document.createElement('iframe');f.style.cssText='width:100%;height:72vh;border:0;border-radius:14px;background:#fff';f.srcdoc=reportHtml(e,b);openModal('<div class="bar" style="justify-content:space-between"><b>CEO weekly report</b><button id="rpx">Close</button></div>');$('mbox').appendChild(f);$('rpx').onclick=closeModal};
+  $('ceo').onclick=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([reportHtml(e,b)],{type:'text/html'}));a.download=`ceo_weekly_report_${D.as_of}.html`;a.click()};
 }
 
 // ---- mandate banner (inputs are set by a person; nothing here is measured)
