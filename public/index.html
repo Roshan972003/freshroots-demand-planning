@@ -218,6 +218,7 @@ main>.mand{padding:18px 20px}
 .gbox{padding:22px}
 td{padding:14px 10px}th{padding:12px 10px}.card.wrap{padding:6px}
 }
+:root{--pilltxt:#fff}@media(prefers-color-scheme:dark){:root{--pilltxt:#0b0b0c}}
 </style>
 </head>
 <body>
@@ -564,18 +565,31 @@ function burnUi(){
     return{out,so,lost,sbf}};
   const A=run(0),B=run(rec),ymax=Math.max(hi*1.5,lo*2,...A.out,...B.out)*1.05;
   const nq=Math.ceil(Math.max(0,hi*rateAt(lead)-A.sbf)/10)*10,need=rec&&nq>rec*1.05?nq:null;
-  const W=720,H=260,L=44,Rt=12,Tp=10,Bt=32,x=t=>L+t/T*(W-L-Rt),y=v=>Tp+(1-Math.min(v,ymax)/ymax)*(H-Tp-Bt);
-  const band=(a,b,c)=>`<rect x="${L}" y="${y(b)}" width="${W-L-Rt}" height="${y(a)-y(b)}" style="fill:var(${c})"/>`;
-  const line=(v,st)=>`<polyline fill="none" style="${st}" stroke-width="2.5" points="${v.map((q,t)=>x(t)+','+y(q)).join(' ')}"/>`;
-  const sa=A.so,sb=B.so;
-  const ticks=[0,lo,hi].concat(ymax>hi*1.4?[Math.round(ymax)]:[]);
-  $('burn').innerHTML=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;color:var(--ink)" role="img" aria-label="Projected weeks of cover over 8 weeks">
-  ${band(0,lo,'--badbg')}${band(lo,hi,'--brandbg')}${band(hi,ymax,'--warnbg')}
-  ${ticks.map(v=>`<text x="${L-6}" y="${y(v)+4}" text-anchor="end" font-size="11" style="fill:var(--mute)" class="mono">${+v.toFixed?+(+v).toFixed(1):v}</text>`).join('')}
-  ${[0,2,4,6,8].map(t=>`<text x="${x(t)}" y="${H-12}" text-anchor="middle" font-size="11" style="fill:var(--mute)" class="mono">wk ${t}</text>`).join('')}
-  ${line(A.out,'stroke:var(--mute);stroke-dasharray:5 4')}${line(B.out,'stroke:var(--brand)')}
-  ${sa!==null?`<circle cx="${x(sa)}" cy="${y(0)}" r="5" style="fill:var(--bad)"/>`:''}</svg>
-  <div class="tag">Demand follows the calendar: festival weeks use this SKU's ${(up*100).toFixed(0)}% uplift (${esc(r.uplift_source)}), other weeks the 12-week average.</div><div class="tag"><span style="color:var(--bad)">■</span> below ${lo} wks (stockout risk) · <span style="color:var(--brand)">■</span> ${lo}–${hi} wks (safe) · <span style="color:var(--warn)">■</span> above ${hi} wks (overstock) · dashed = no new order · solid = recommended ${rec} units arriving week ${lead}${on?` · ${on} units on order assumed week 1`:''}</div>
+  const W=780,H=360,L=58,Rt=18,Tp=34,Bt=58,iw=W-L-Rt,x=t=>L+t/T*iw,y=v=>Tp+(1-Math.min(Math.max(v,0),ymax)/ymax)*(H-Tp-Bt);
+  const dt=t=>{const d=new Date(D.as_of+'T00:00:00');d.setDate(d.getDate()+Math.round(7*t));return d.toLocaleString('en',{day:'numeric',month:'short'})};
+  const sa=A.so,sb=B.so,fmt=v=>+(+v).toFixed(1);
+  const band=(a,b,c,lab,col)=>{const h=y(a)-y(b);return `<rect x="${L}" y="${y(b)}" width="${iw}" height="${h}" style="fill:var(${c})" opacity=".85"/>${h>20?`<text x="${W-Rt-10}" y="${y(b)+h/2+4}" text-anchor="end" font-size="11" font-weight="700" letter-spacing=".06em" style="fill:var(${col})" opacity=".8">${lab}</text>`:''}`};
+  const path=v=>v.map((q,t)=>(t?'L':'M')+x(t).toFixed(1)+' '+y(q).toFixed(1)).join(' ');
+  const pill=(cx,cy,txt,col)=>{const w=txt.length*6.6+18,x0=Math.min(Math.max(cx-w/2,L+2),W-Rt-w-2);return `<g><rect x="${x0}" y="${cy-11}" width="${w}" height="22" rx="11" style="fill:var(${col})"/><text x="${x0+w/2}" y="${cy+4}" text-anchor="middle" font-size="11" font-weight="700" style="fill:var(--pilltxt)">${txt}</text></g>`};
+  const ticks=[...new Set([0,lo,hi,Math.round(ymax)])].filter(v=>v<=ymax+.01);
+  const evt=(t,txt,col,row)=>`<line x1="${x(t)}" x2="${x(t)}" y1="${Tp}" y2="${H-Bt}" stroke-width="1.5" stroke-dasharray="3 4" style="stroke:var(${col})"/>${pill(x(t),Tp-14+row*0,txt,col)}`;
+  $('burn').innerHTML=`<div style="overflow-x:auto"><svg viewBox="0 0 ${W} ${H}" style="width:100%;min-width:640px;height:auto;color:var(--ink)" role="img" aria-label="Projected weeks of cover over 8 weeks for ${esc(r.name)}">
+  <defs><linearGradient id="bg1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--brand)" stop-opacity=".35"/><stop offset="1" stop-color="var(--brand)" stop-opacity="0"/></linearGradient></defs>
+  ${band(hi,ymax,'--warnbg','OVERSTOCK','--warn')}${band(lo,hi,'--brandbg','SAFE','--brand')}${band(0,lo,'--badbg','STOCKOUT RISK','--bad')}
+  ${[...Array(T+1).keys()].map(t=>`<line x1="${x(t)}" x2="${x(t)}" y1="${Tp}" y2="${H-Bt}" style="stroke:var(--inset)" stroke-width="1" opacity=".6"/>`).join('')}
+  ${ticks.map(v=>`<line x1="${L}" x2="${W-Rt}" y1="${y(v)}" y2="${y(v)}" style="stroke:var(--mute)" stroke-width="1" stroke-dasharray="2 5" opacity=".45"/><text x="${L-10}" y="${y(v)+4}" text-anchor="end" font-size="12" style="fill:var(--mute)" class="mono">${fmt(v)}</text>`).join('')}
+  <text transform="translate(14 ${(Tp+H-Bt)/2}) rotate(-90)" text-anchor="middle" font-size="12" style="fill:var(--mute)">weeks of cover</text>
+  ${[...Array(T+1).keys()].map(t=>`<text x="${x(t)}" y="${H-Bt+20}" text-anchor="middle" font-size="12" font-weight="600" style="fill:var(--ink)">${t?'Wk '+t:'Now'}</text><text x="${x(t)}" y="${H-Bt+36}" text-anchor="middle" font-size="11" style="fill:var(--mute)">${dt(t)}</text>`).join('')}
+  <path d="${path(B.out)} L${x(T)} ${y(0)} L${x(0)} ${y(0)}Z" fill="url(#bg1)"/>
+  <path d="${path(A.out)}" fill="none" stroke-width="2.5" stroke-dasharray="7 6" stroke-linecap="round" stroke-linejoin="round" style="stroke:var(--mute)"/>
+  <path d="${path(B.out)}" fill="none" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="stroke:var(--brand)"/>
+  ${B.out.map((q,t)=>`<circle cx="${x(t)}" cy="${y(q)}" r="4" style="fill:var(--panel);stroke:var(--brand)" stroke-width="2.5"/>`).join('')}
+  ${rec?evt(lead,'Order lands · wk '+lead,'--accent',0):''}${on&&lead!==1?evt(1,'On order lands','--sky',0):''}
+  ${sa!==null?`<circle cx="${x(sa)}" cy="${y(0)}" r="11" style="fill:var(--bad)" opacity=".22"/><circle cx="${x(sa)}" cy="${y(0)}" r="6" style="fill:var(--bad);stroke:var(--panel)" stroke-width="2"/>${pill(x(sa),y(0)-48,'Out of stock · day '+Math.round(sa*7),'--bad')}`:''}
+  ${sb!==null&&(sa===null||Math.abs(sb-sa)>.05)?`<circle cx="${x(sb)}" cy="${y(0)}" r="6" style="fill:var(--warn);stroke:var(--panel)" stroke-width="2"/>${pill(x(sb),y(0)-48,'Still short · day '+Math.round(sb*7),'--warn')}`:''}
+  </svg></div>
+  <div class="chips" style="gap:16px;margin:10px 0 4px"><span class="tag"><svg width="30" height="8" style="display:inline;vertical-align:middle"><line x1="0" x2="30" y1="4" y2="4" stroke-width="2.5" stroke-dasharray="6 4" style="stroke:var(--mute)"/></svg> No new order</span><span class="tag"><svg width="30" height="8" style="display:inline;vertical-align:middle"><line x1="0" x2="30" y1="4" y2="4" stroke-width="4" stroke-linecap="round" style="stroke:var(--brand)"/></svg> With recommended ${rec} units${on?` + ${on} on order`:''}</span><span class="tag">Safe band: ${lo}–${hi} weeks of cover</span></div>
+  <div class="tag">Demand follows the calendar: festival weeks use this SKU's ${(up*100).toFixed(0)}% uplift (${esc(r.uplift_source)}), other weeks the 12-week average.</div>
   <div style="margin-top:6px">${sa!==null?`Without a new order this SKU runs out around <b>day ${Math.round(sa*7)}</b> (week ${Math.ceil(sa)}), about <b>${Math.round(A.lost)}</b> units short over ${T} weeks.`:'No stockout within 8 weeks without a new order.'} ${rec?(sb!==null?`With the recommended ${rec} units it still runs out around <b>day ${Math.round(sb*7)}</b>, ${sb<lead?`before the order lands: a ${lead}-week lead time is too slow`:'even after the order lands: the quantity does not last'}${need?`. Sized for the lead time, about <b>${need}</b> units would land at ${hi} weeks of cover`:''}.`:'With the recommended order it stays in stock.'):''}</div>`;
 }
 
