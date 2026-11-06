@@ -120,8 +120,9 @@
 <rect x="554.0" y="393.0" width="214" height="124" rx="16" fill="#f9d3e1" stroke="#d9558a" stroke-width="3"/>
 <circle cx="558.0" cy="397.0" r="15" fill="#2a2620"/><text x="558.0" y="403.0" text-anchor="middle" font-size="16" font-weight="700" fill="#fff">2</text>
 <text x="661.0" y="425.0" text-anchor="middle" font-size="19" font-weight="800" fill="#2a2620">Reads the data files</text>
-<text x="661.0" y="449.0" text-anchor="middle" font-size="14" fill="#4a4137">sales, SKU master, stock,</text>
-<text x="661.0" y="469.0" text-anchor="middle" font-size="14" fill="#4a4137">calendar, festivals (CSV)</text>
+<text x="661.0" y="449.0" text-anchor="middle" font-size="14" fill="#4a4137">sales history = SAP export,</text>
+<text x="661.0" y="469.0" text-anchor="middle" font-size="14" fill="#4a4137">plus SKU master, stock,</text>
+<text x="661.0" y="489.0" text-anchor="middle" font-size="14" fill="#4a4137">calendar, festivals (CSV)</text>
 <rect x="554.0" y="539.0" width="214" height="124" rx="16" fill="#cdeeee" stroke="#2a9a9a" stroke-width="3"/>
 <circle cx="558.0" cy="543.0" r="15" fill="#2a2620"/><text x="558.0" y="549.0" text-anchor="middle" font-size="16" font-weight="700" fill="#fff">3</text>
 <text x="661.0" y="571.0" text-anchor="middle" font-size="19" font-weight="800" fill="#2a2620">Reads Zoho</text>
@@ -171,7 +172,8 @@
 <circle cx="1543.3" cy="1565.0" r="15" fill="#2a2620"/><text x="1543.3" y="1571.0" text-anchor="middle" font-size="16" font-weight="700" fill="#fff">11</text>
 <text x="1646.3" y="1593.0" text-anchor="middle" font-size="19" font-weight="800" fill="#2a2620">Reports</text>
 <text x="1646.3" y="1617.0" text-anchor="middle" font-size="14" fill="#4a4137">12 metrics, summary, CEO</text>
-<text x="1646.3" y="1637.0" text-anchor="middle" font-size="14" fill="#4a4137">report download, PO log</text>
+<text x="1646.3" y="1637.0" text-anchor="middle" font-size="14" fill="#4a4137">weekly report (preview,</text>
+<text x="1646.3" y="1657.0" text-anchor="middle" font-size="14" fill="#4a4137">print/PDF, HTML), PO log</text>
 <rect x="510.8" y="371.0" width="54.0" height="22" rx="11" fill="#f7f4ea" stroke="#9a8f7e" stroke-width="1.5"/><text x="537.8" y="387.0" text-anchor="middle" font-size="14" font-weight="700" fill="#4a4137">reads</text>
 <rect x="510.8" y="371.0" width="54.0" height="22" rx="11" fill="#f7f4ea" stroke="#9a8f7e" stroke-width="1.5"/><text x="537.8" y="387.0" text-anchor="middle" font-size="14" font-weight="700" fill="#4a4137">reads</text>
 <rect x="761.0" y="517.0" width="46.4" height="22" rx="11" fill="#f7f4ea" stroke="#9a8f7e" stroke-width="1.5"/><text x="784.2" y="533.0" text-anchor="middle" font-size="14" font-weight="700" fill="#4a4137">data</text>

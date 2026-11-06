@@ -20,7 +20,7 @@ KIND = {"people": ("#cfe0f6", "#4a86c8"), "app": ("#faeec0", "#d9a520"), "servic
 # id, row, col, kind, title, body lines
 NODES = [
     (1, 0, 0, "people", "Opens the app", ["Dashboard on any device;", "run_weekly.sh gives a", "weekly CSV report"]),
-    (2, 1, 1, "data", "Reads the data files", ["sales, SKU master, stock,", "calendar, festivals (CSV)"]),
+    (2, 1, 1, "data", "Reads the data files", ["sales history = SAP export,", "plus SKU master, stock,", "calendar, festivals (CSV)"]),
     (3, 2, 1, "service", "Reads Zoho", ["stock + open POs, read-only,", "kept 45 s; falls back", "to the CSVs"]),
     (4, 3, 2, "app", "Applies the rules", ["4-vs-12-week, cover, perishable", "window, festival uplift by", "category or SKU; odd cases", "go to review"]),
     (5, 4, 3, "app", "Shows every flag", ["reasons, burn-down, what-if,", "festival plan, mid-week", "signals, distributor map"]),
@@ -29,7 +29,7 @@ NODES = [
     (8, 7, 4, "service", "Saves everything", ["decisions, approvers, rules,", "uplifts, PO audit log"]),
     (9, 2, 5, "service", "Creates a draft PO", ["in Zoho as DRAFT only;", "the app never issues one"]),
     (10, 8, 5, "people", "Issues the PO", ["a person reviews the", "draft and issues it in Zoho"]),
-    (11, 9, 5, "app", "Reports", ["12 metrics, summary, CEO", "report download, PO log"]),
+    (11, 9, 5, "app", "Reports", ["12 metrics, summary, CEO", "weekly report (preview,", "print/PDF, HTML), PO log"]),
 ]
 EDGES = [  # from, to, label
     (1, 2, "reads"), (1, 3, "reads"), (2, 4, "data"), (3, 4, "stock + POs"), (4, 5, "flags"),
