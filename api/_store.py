@@ -182,6 +182,8 @@ def log_po(po_number, sku, qty, as_of, approved_by, zoho_status):
           (f"{int(time.time()*1000)}-{sku}", po_number, sku, int(qty), as_of, approved_by, zoho_status, now))
 
 def list_po_log():
+    # TEMPORARY one-off: remove the deleted end-to-end test draft (PO-00003). Removed again right after.
+    _run2(POLOG_SCHEMA, "DELETE FROM po_log WHERE po_number=%s AND approved_by LIKE %s", "DELETE FROM po_log WHERE po_number=? AND approved_by LIKE ?", ("PO-00003", "%end-to-end test%"))
     rows = _run2(POLOG_SCHEMA, "SELECT po_number,sku,qty,as_of,approved_by,zoho_status,created_at FROM po_log ORDER BY created_at DESC LIMIT 50",
                  "SELECT po_number,sku,qty,as_of,approved_by,zoho_status,created_at FROM po_log ORDER BY created_at DESC LIMIT 50", fetch=True)
     return [dict(zip(("po_number", "sku", "qty", "as_of", "approved_by", "zoho_status", "created_at"), r)) for r in rows]
